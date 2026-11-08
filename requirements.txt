@@ -1,0 +1,6 @@
+pandas          # tables of data (like Excel in Python)
+requests        # downloads data from the web (DMO auction results)
+matplotlib      # draws the charts, in the house style from chart_style.py
+python-dotenv   # reads the API key from the .env file
+xlrd            # lets pandas read old-style Excel files (.xls)
+openpyxl        # lets pandas read new-style Excel files (.xlsx)

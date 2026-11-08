@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gilt Auction Monitor</title>
+<meta name="description" content="UK gilt auction results scored for demand (cover and tail), with a Claude-drafted review.">
+<style>:root { --navy: #002B5C; --mid-blue: #4F81BD; --gold: #C9A227; --dark-grey: #595959; --light-grey: #D9D9D9; --white: #FFFFFF; }
+* { box-sizing: border-box; }                                          /* Widths include padding, which keeps the grid maths simple */
+body { margin: 0; font-family: Arial, Helvetica, "Liberation Sans", sans-serif; color: var(--dark-grey); background: var(--white); line-height: 1.45; font-size: 14px; } /* Same font and text colour as the charts */
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px; }          /* One centred page width, used by every band */
+.masthead { background: var(--navy); border-bottom: 3px solid var(--gold); }  /* Navy band across the top, with a gold rule under it */
+.masthead .wrap { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding-top: 18px; padding-bottom: 16px; }  /* Title on the left, data date on the right */
+.label { margin: 0; color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }  /* Small gold label above the title */
+h1 { margin: 2px 0; font-size: 26px; color: var(--white); }            /* Page title, white on navy */
+.masthead .subtitle { margin: 0; color: var(--light-grey); font-size: 13px; }  /* Subtitle, light grey on navy */
+.stamp { color: var(--light-grey); font-size: 12px; text-align: right; white-space: nowrap; }  /* "Data as of ..." on the right of the band */
+.stamp strong { display: block; color: var(--white); font-size: 15px; }  /* The date itself, larger and white */
+.headline { margin: 20px 0; }                                          /* (new) Space around the latest-auction box */
+.headline h2 { margin: 0 0 4px; font-size: 18px; color: var(--navy); } /* (new) "Latest auction: ..." heading */
+.headline .sub { margin: 0 0 12px; }                                   /* (new) The peer-group line under it */
+.tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin: 0; }  /* Six headline tiles in a row */
+.tile { border: 1px solid var(--light-grey); border-top: 3px solid var(--navy); padding: 10px 12px; }  /* Each tile: hairline frame, navy top edge */
+.tile.gold { border-top-color: var(--gold); }                          /* (new) The label tile gets a gold top edge: it's the verdict */
+.tile-label { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }  /* What the tile shows */
+.tile-value { margin: 4px 0 0; font-size: 26px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }  /* The headline number */
+.tile-unit { font-size: 12px; font-weight: 400; color: var(--dark-grey); margin-left: 3px; }  /* The unit after the number, small */
+.tile-detail { margin: 2px 0 0; font-size: 12px; font-weight: 700; }   /* The reading, e.g. "higher than 73% of peers" */
+.tile-date { margin: 2px 0 0; font-size: 11px; }                       /* The auction date, smallest */
+.tile-info { margin: 8px 0 0; padding-top: 7px; border-top: 1px solid var(--light-grey); font-size: 11.5px; line-height: 1.4; }  /* The plain-English explanation, under a hairline */
+.asof-note { margin: 0 0 10px; font-size: 12px; font-style: italic; } /* Small italic note at the top of a sidebar card */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }  /* Charts on the left, sidebar on the right */
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }  /* Charts in two columns */
+.card { border: 1px solid var(--light-grey); padding: 14px 16px 12px; background: var(--white); }  /* Every chart and panel sits in a card */
+.card.wide { grid-column: 1 / -1; }                                    /* A wide chart spans both columns */
+.fig { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--mid-blue); }  /* "FIGURE 1" */
+.card h3 { margin: 3px 0 2px; font-size: 15px; line-height: 1.3; color: var(--navy); }  /* The takeaway title */
+.sub { margin: 0 0 8px; font-size: 12px; }                             /* What's plotted and the units */
+.card img { display: block; width: 100%; height: auto; }               /* The chart fills its card */
+.card > a { display: block; cursor: zoom-in; }                         /* A static chart is clickable, with a magnifier cursor */
+.foot { margin: 6px 0 0; font-size: 11px; }                            /* Note and source lines under the chart */
+.side h2, .numbers h2 { margin: 0 0 8px; font-size: 15px; color: var(--navy); padding-bottom: 6px; border-bottom: 2px solid var(--navy); }  /* Panel headings */
+.side .card + .card { margin-top: 20px; }                              /* Space between the sidebar's cards */
+.side p { margin: 0 0 10px; }                                          /* Space between paragraphs */
+.side ul { margin: 0; padding-left: 18px; font-size: 12px; }           /* The method and data-challenge lists */
+.side li { margin-bottom: 6px; }                                       /* Space between list items */
+.badge { display: inline-block; margin: 0 0 10px; padding: 3px 8px; background: var(--navy); color: var(--white); font-size: 12px; font-weight: 700; }  /* (new) "Numbers verified: X of X matched" */
+.warn { margin: 0 0 10px; padding: 8px 10px; border: 2px solid var(--gold); color: var(--navy); font-size: 12px; font-weight: 700; }  /* (new) The warning shown instead if any number failed */
+.numbers { margin-top: 20px; }                                         /* Space above the auctions table */
+.table-wrap { overflow-x: auto; }                                      /* On a phone the table scrolls sideways instead of squashing */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }     /* Full-width table with single-line borders */
+th, td { padding: 6px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--light-grey); }  /* Cell spacing and light grey row lines */
+th { background: var(--navy); color: var(--white); font-weight: 700; } /* Navy header row with white text */
+th[data-type] { cursor: pointer; white-space: nowrap; }                /* (new) Headings you can click to sort show a pointer */
+th[aria-sort="ascending"]::after { content: " \25B2"; }               /* (new) An up arrow on the column sorted low-to-high */
+th[aria-sort="descending"]::after { content: " \25BC"; }              /* (new) A down arrow on the column sorted high-to-low */
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }  /* Numbers right-aligned so the decimals line up */
+footer { margin: 28px auto 40px; font-size: 12px; }                    /* Small footer */
+a { color: var(--mid-blue); }                                          /* Links in the mid blue */
+@media (max-width: 1100px) { .tiles { grid-template-columns: repeat(3, 1fr); } .layout { grid-template-columns: 1fr; } }  /* Tablet: 3 tiles a row, sidebar moves below */
+@media (max-width: 700px) { .tiles { grid-template-columns: repeat(2, 1fr); } .charts { grid-template-columns: 1fr; } .masthead .wrap { display: block; } .stamp { text-align: left; margin-top: 8px; } }  /* Phone: one column */
+</style>
+</head>
+<body>
+<header class="masthead"><div class="wrap">
+<div>
+<p class="label">UK gilts | Auction monitor</p>
+<h1>Gilt Auction Monitor</h1>
+<p class="subtitle">DMO gilt auctions scored for demand: cover and tail against comparable auctions. By Toby Small.</p>
+</div>
+<div class="stamp">Data as of<strong>03 Nov 2026</strong>UK DMO</div>
+</div></header>
+<main class="wrap">
+<section class="headline">
+<h2>Latest auction: 4 5/8% Green Gilt 2037, 03 Nov 2026</h2>
+<p class="sub">Compared with 55 medium-bucket auctions over the previous 3 years.</p>
+<div class="tiles">
+<div class="tile gold">
+<p class="tile-label">Verdict</p>
+<p class="tile-value">normal<span class="tile-unit"></span></p>
+<p class="tile-detail">cover pct 73 · tail pct 60</p>
+<p class="tile-date">03 Nov 2026</p>
+<p class="tile-info">Strong if both percentiles are at least 75; weak if either is 25 or lower; otherwise normal.</p>
+</div>
+<div class="tile">
+<p class="tile-label">Cover</p>
+<p class="tile-value">3.38<span class="tile-unit">x</span></p>
+<p class="tile-detail">higher than 73% of peers</p>
+<p class="tile-date">03 Nov 2026</p>
+<p class="tile-info">Amount bid divided by amount sold. Higher means more demand for the gilts on offer.</p>
+</div>
+<div class="tile">
+<p class="tile-label">Tail</p>
+<p class="tile-value">0.3<span class="tile-unit">bp</span></p>
+<p class="tile-detail">narrower than 60% of peers</p>
+<p class="tile-date">03 Nov 2026</p>
+<p class="tile-info">Yield at the lowest accepted price minus yield at the average price. Narrower means bids were bunched together: steadier demand.</p>
+</div>
+<div class="tile">
+<p class="tile-label">Yield</p>
+<p class="tile-value">5.268<span class="tile-unit">%</span></p>
+<p class="tile-detail">price £94.919</p>
+<p class="tile-date">03 Nov 2026</p>
+<p class="tile-info">Yield at the average accepted price: the return a buyer locks in by holding the gilt to maturity.</p>
+</div>
+<div class="tile">
+<p class="tile-label">Amount sold</p>
+<p class="tile-value">3,250<span class="tile-unit">£m</span></p>
+<p class="tile-detail">PAOF: none</p>
+<p class="tile-date">03 Nov 2026</p>
+<p class="tile-info">Nominal (face value) sold at the auction, before any post-auction option facility (PAOF) top-up.</p>
+</div>
+<div class="tile">
+<p class="tile-label">Bucket</p>
+<p class="tile-value">medium<span class="tile-unit">10.3 yrs</span></p>
+<p class="tile-detail">7 to 15 years</p>
+<p class="tile-date">03 Nov 2026</p>
+<p class="tile-info">The DMO&#x27;s maturity bucket on the auction day. Each auction is compared only with its own bucket.</p>
+</div>
+</div>
+</section>
+<div class="layout">
+<div class="charts">
+<article class="card wide">
+<p class="fig">Figure 1</p>
+<h3>Cover at the latest auction was 3.38x, higher than 73% of medium-bucket auctions in the past 3 years</h3>
+<p class="sub">Bid-to-cover ratio (amount bid / amount sold) at each conventional gilt auction, by maturity bucket, times. Gold dot: latest auction. No long-bucket auctions since 21 Oct 2025.</p>
+<a href="charts/cover_history.svg?v=202611081332" target="_blank" title="Open full size"><img src="charts/cover_history.svg?v=202611081332" alt="Figure 1: 1. Cover at the latest auction was 3.38x, higher than 73% of medium-bucket auctions in the past 3 years. Bid-to-cover ratio (amount bid / amount sold) at each conventional gilt auction, by maturity bucket, times. Gold dot: latest auction. No long-bucket auctions since 21 Oct 2025." loading="lazy"></a>
+<p class="foot">Source: UK Debt Management Office (D2.1A). Data as of 03 Nov 2026.</p>
+</article>
+<article class="card wide">
+<p class="fig">Figure 2</p>
+<h3>The latest tail was 0.3bp, narrower than the medium-bucket median of 0.4bp</h3>
+<p class="sub">Tail (yield at lowest accepted price minus yield at average accepted price) at each conventional gilt auction, by maturity bucket, basis points. Gold dot: latest auction. No long-bucket auctions since 21 Oct 2025.</p>
+<a href="charts/tail_history.svg?v=202611081332" target="_blank" title="Open full size"><img src="charts/tail_history.svg?v=202611081332" alt="Figure 2: 2. The latest tail was 0.3bp, narrower than the medium-bucket median of 0.4bp. Tail (yield at lowest accepted price minus yield at average accepted price) at each conventional gilt auction, by maturity bucket, basis points. Gold dot: latest auction. No long-bucket auctions since 21 Oct 2025." loading="lazy"></a>
+<p class="foot">Source: UK Debt Management Office (D2.1A). Data as of 03 Nov 2026.</p>
+</article>
+<article class="card wide">
+<p class="fig">Figure 3</p>
+<h3>Of the last 10 auctions, 4 scored strong, 6 normal and 0 weak</h3>
+<p class="sub">Percentiles against auctions in the same bucket over the previous 3 years (higher = better). Strong: both at least 75. Weak: either 25 or lower.</p>
+<a href="charts/scorecard.svg?v=202611081332" target="_blank" title="Open full size"><img src="charts/scorecard.svg?v=202611081332" alt="Figure 3: 3. Of the last 10 auctions, 4 scored strong, 6 normal and 0 weak. Percentiles against auctions in the same bucket over the previous 3 years (higher = better). Strong: both at least 75. Weak: either 25 or lower." loading="lazy"></a>
+<p class="foot">Source: UK Debt Management Office (D2.1A). Data as of 03 Nov 2026.</p>
+</article>
+</div>
+<aside class="side">
+<div class="card">
+<h2>Claude-drafted review</h2>
+<p class="asof-note">Drafted by Claude from the headline figures only; I check and rewrite it.</p>
+<p class="badge">Numbers verified against DMO data: 8 of 8 facts matched</p>
+<p>The 3 November 2026 auction of the 4 5/8% Green Gilt 2037, a medium-bucket gilt with 10.34 years to maturity, sold £3,250 million nominal, with no take-up at the post-auction option facility. The average accepted price was £94.919 per £100 nominal, equivalent to a yield of 5.268%. The bid-to-cover ratio of 3.38 was higher than in 72.7% of the 55 peer auctions, which comprise medium-bucket conventional auctions in the previous 3 years. The tail of 0.3 basis points was narrower than in 60.0% of those peer auctions. With neither percentile at or below 25 and neither reaching the level of 75 required for a strong reading, the auction is classed as normal under our fixed rule.</p>
+</div>
+<div class="card">
+<h2>My read: coming soon</h2>
+</div>
+<div class="card">
+<h2>Method</h2>
+<ul>
+<li>Only conventional gilts are scored. Each auction goes in the DMO&#x27;s maturity bucket for its years left to maturity on the day: short (under 7), medium (7 to 15) or long (over 15).</li>
+<li>Its peers are the auctions in the same bucket over the previous 3 years. With fewer than 10 peers it isn&#x27;t scored.</li>
+<li>Cover percentile: the share of peers with a lower cover. Tail percentile: the share of peers with a wider tail. Ties count as half. For both, higher is better.</li>
+<li>Strong: both percentiles at least 75. Weak: either 25 or lower. Otherwise normal. So one bad measure is enough to call an auction weak.</li>
+<li>Claude drafts the review from the facts in the headline box only, with no other data or tools. Every number in the draft is then checked against those facts automatically, and I check the draft myself.</li>
+</ul>
+</div>
+<div class="card">
+<h2>Data challenges</h2>
+<ul>
+<li>The DMO&#x27;s website blocks automated downloads with a captcha, so the auction file is downloaded by hand and the site is rebuilt on my own computer. A scheduled cloud job (e.g. GitHub Actions) isn&#x27;t used, because the captcha would block it too.</li>
+<li>Index-linked gilt auctions are sold at a single price that every successful bidder pays, so they have no tail and are left out. 918 conventional auctions since 1998 are scored.</li>
+<li>The auction file gives only each gilt&#x27;s maturity year. Exact redemption dates come from two more DMO reports (gilts in issue, and redeemed gilts); the year alone would put some gilts in the wrong bucket.</li>
+<li>The DMO file has no &#x27;amount bid&#x27; column, so cover can&#x27;t be recalculated from it. Instead, the amount bid is copied from the DMO&#x27;s result notice for spot checks.</li>
+<li>Cover check, 03 Nov 2026: £10,980.5m bid / £3,250m sold = 3.3786, against the DMO&#x27;s 3.38: matches.</li>
+<li>Data error: the 4¼% Treasury Gilt 2039 auction on 04 Mar 2009 shows a tail of -5.5bp. A tail can&#x27;t be negative, so it is left out of all scoring.</li>
+<li>No long-bucket auctions since 21 Oct 2025. Its latest values on the charts are therefore not recent.</li>
+</ul>
+</div>
+</aside>
+</div>
+<section class="card numbers">
+<h2>Longer-run view</h2>
+<p class="sub">Across all conventional auctions, median cover rose from 2.24x in 2015-21 to 2.98x in 2023-25; the median tail widened from 0.3bp in 2015-21 to 0.5bp in 2023-25; and the median yield at the average accepted price rose from 0.83% in 2015-21 to 4.31% in 2023-25.</p>
+<div class="table-wrap"><table>
+<thead><tr><th class="">Group</th><th class="">Period</th><th class="num">Auctions</th><th class="num">Median cover (x)</th><th class="num">Median tail (bp)</th><th class="num">Median yield (%)</th></tr></thead>
+<tbody>
+<tr><td class="">All conventional</td><td class="">2015-21</td><td class="num">337</td><td class="num">2.24</td><td class="num">0.3</td><td class="num">0.83</td></tr>
+<tr><td class="">All conventional</td><td class="">2023-25</td><td class="num">171</td><td class="num">2.98</td><td class="num">0.5</td><td class="num">4.31</td></tr>
+<tr><td class="">short</td><td class="">2015-21</td><td class="num">115</td><td class="num">2.28</td><td class="num">0.3</td><td class="num">0.37</td></tr>
+<tr><td class="">short</td><td class="">2023-25</td><td class="num">68</td><td class="num">3.04</td><td class="num">0.5</td><td class="num">4.10</td></tr>
+<tr><td class="">medium</td><td class="">2015-21</td><td class="num">102</td><td class="num">2.33</td><td class="num">0.2</td><td class="num">0.88</td></tr>
+<tr><td class="">medium</td><td class="">2023-25</td><td class="num">59</td><td class="num">2.92</td><td class="num">0.6</td><td class="num">4.33</td></tr>
+<tr><td class="">long</td><td class="">2015-21</td><td class="num">120</td><td class="num">2.16</td><td class="num">0.3</td><td class="num">1.27</td></tr>
+<tr><td class="">long</td><td class="">2023-25</td><td class="num">44</td><td class="num">3.02</td><td class="num">0.4</td><td class="num">4.61</td></tr>
+</tbody>
+</table></div>
+<p class="foot">Conventional auctions only; each period runs from January of its first year to December of its last. Medians are the middle value, so a single unusual auction can't move them much.</p>
+</section>
+<section class="card numbers">
+<h2>Last 20 conventional auctions</h2>
+<p class="sub">Click a column heading to sort.</p>
+<div class="table-wrap"><table>
+<thead><tr><th data-type="num" class="">Date</th><th data-type="text" class="">Gilt</th><th data-type="num" class="">Bucket</th><th data-type="num" class="num">Years to maturity</th><th data-type="num" class="num">Sold (£m)</th><th data-type="num" class="num">Cover (x)</th><th data-type="num" class="num">Cover pct</th><th data-type="num" class="num">Tail (bp)</th><th data-type="num" class="num">Tail pct</th><th data-type="num" class="">Label</th></tr></thead>
+<tbody>
+<tr><td class="" data-value="20261103">03 Nov 2026</td><td class="" data-value="4 5/8% Green Gilt 2037">4 5/8% Green Gilt 2037</td><td class="" data-value="2">medium</td><td class="num" data-value="10.340862422997947">10.34</td><td class="num" data-value="3250.0">3,250</td><td class="num" data-value="3.38">3.38</td><td class="num" data-value="72.72727272727273">73</td><td class="num" data-value="0.3">0.3</td><td class="num" data-value="60.0">60</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20261027">27 Oct 2026</td><td class="" data-value="4 5/8% Treasury Gilt 2032">4 5/8% Treasury Gilt 2032</td><td class="" data-value="1">short</td><td class="num" data-value="5.360711841204655">5.36</td><td class="num" data-value="4500.0">4,500</td><td class="num" data-value="3.51">3.51</td><td class="num" data-value="91.30434782608695">91</td><td class="num" data-value="0.3">0.3</td><td class="num" data-value="59.42028985507246">59</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20261020">20 Oct 2026</td><td class="" data-value="4 7/8% Treasury Gilt 2036">4 7/8% Treasury Gilt 2036</td><td class="" data-value="2">medium</td><td class="num" data-value="9.779603011635865">9.78</td><td class="num" data-value="4250.0">4,250</td><td class="num" data-value="3.61">3.61</td><td class="num" data-value="90.0">90</td><td class="num" data-value="0.2">0.2</td><td class="num" data-value="78.18181818181819">78</td><td class="" data-value="3">strong</td></tr>
+<tr><td class="" data-value="20261014">14 Oct 2026</td><td class="" data-value="4 5/8% Treasury Gilt 2030">4 5/8% Treasury Gilt 2030</td><td class="" data-value="1">short</td><td class="num" data-value="3.6030116358658453">3.60</td><td class="num" data-value="5000.0">5,000</td><td class="num" data-value="3.41">3.41</td><td class="num" data-value="79.41176470588235">79</td><td class="num" data-value="0.2">0.2</td><td class="num" data-value="81.61764705882352">82</td><td class="" data-value="3">strong</td></tr>
+<tr><td class="" data-value="20260929">29 Sep 2026</td><td class="" data-value="4 7/8% Treasury Gilt 2036">4 7/8% Treasury Gilt 2036</td><td class="" data-value="2">medium</td><td class="num" data-value="9.83709787816564">9.84</td><td class="num" data-value="4250.0">4,250</td><td class="num" data-value="3.34">3.34</td><td class="num" data-value="70.9090909090909">71</td><td class="num" data-value="0.5">0.5</td><td class="num" data-value="45.45454545454545">45</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20260922">22 Sep 2026</td><td class="" data-value="4 5/8% Treasury Gilt 2032">4 5/8% Treasury Gilt 2032</td><td class="" data-value="1">short</td><td class="num" data-value="5.456536618754278">5.46</td><td class="num" data-value="4750.0">4,750</td><td class="num" data-value="3.07">3.07</td><td class="num" data-value="30.88235294117647">31</td><td class="num" data-value="0.4">0.4</td><td class="num" data-value="47.05882352941176">47</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20260910">10 Sep 2026</td><td class="" data-value="4 5/8% Treasury Gilt 2030">4 5/8% Treasury Gilt 2030</td><td class="" data-value="1">short</td><td class="num" data-value="3.696098562628337">3.70</td><td class="num" data-value="5000.0">5,000</td><td class="num" data-value="3.24">3.24</td><td class="num" data-value="53.73134328358209">54</td><td class="num" data-value="0.3">0.3</td><td class="num" data-value="60.447761194029844">60</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20260825">25 Aug 2026</td><td class="" data-value="4 1/8% Treasury Gilt 2033">4 1/8% Treasury Gilt 2033</td><td class="" data-value="1">short</td><td class="num" data-value="6.532511978097194">6.53</td><td class="num" data-value="4000.0">4,000</td><td class="num" data-value="3.39">3.39</td><td class="num" data-value="78.35820895522389">78</td><td class="num" data-value="0.2">0.2</td><td class="num" data-value="82.08955223880598">82</td><td class="" data-value="3">strong</td></tr>
+<tr><td class="" data-value="20260818">18 Aug 2026</td><td class="" data-value="4 7/8% Treasury Gilt 2036">4 7/8% Treasury Gilt 2036</td><td class="" data-value="2">medium</td><td class="num" data-value="9.952087611225188">9.95</td><td class="num" data-value="4000.0">4,000</td><td class="num" data-value="3.65">3.65</td><td class="num" data-value="96.42857142857143">96</td><td class="num" data-value="0.1">0.1</td><td class="num" data-value="94.64285714285714">95</td><td class="" data-value="3">strong</td></tr>
+<tr><td class="" data-value="20260804">04 Aug 2026</td><td class="" data-value="4 5/8% Treasury Gilt 2032">4 5/8% Treasury Gilt 2032</td><td class="" data-value="1">short</td><td class="num" data-value="5.590691307323751">5.59</td><td class="num" data-value="4250.0">4,250</td><td class="num" data-value="3.34">3.34</td><td class="num" data-value="71.96969696969697">72</td><td class="num" data-value="0.2">0.2</td><td class="num" data-value="82.57575757575758">83</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20260721">21 Jul 2026</td><td class="" data-value="4% Treasury Gilt 2029">4% Treasury Gilt 2029</td><td class="" data-value="1">short</td><td class="num" data-value="2.836413415468857">2.84</td><td class="num" data-value="5000.0">5,000</td><td class="num" data-value="3.42">3.42</td><td class="num" data-value="80.3030303030303">80</td><td class="num" data-value="0.3">0.3</td><td class="num" data-value="63.63636363636363">64</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20260716">16 Jul 2026</td><td class="" data-value="4 7/8% Treasury Gilt 2036">4 7/8% Treasury Gilt 2036</td><td class="" data-value="2">medium</td><td class="num" data-value="10.042436687200547">10.04</td><td class="num" data-value="4250.0">4,250</td><td class="num" data-value="3.13">3.13</td><td class="num" data-value="60.526315789473685">61</td><td class="num" data-value="0.1">0.1</td><td class="num" data-value="95.6140350877193">96</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20260707">07 Jul 2026</td><td class="" data-value="4 1/8% Treasury Gilt 2033">4 1/8% Treasury Gilt 2033</td><td class="" data-value="1">short</td><td class="num" data-value="6.666666666666667">6.67</td><td class="num" data-value="4000.0">4,000</td><td class="num" data-value="3.16">3.16</td><td class="num" data-value="49.24242424242424">49</td><td class="num" data-value="0.2">0.2</td><td class="num" data-value="83.33333333333334">83</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20260702">02 Jul 2026</td><td class="" data-value="4 5/8% Green Gilt 2037">4 5/8% Green Gilt 2037</td><td class="" data-value="2">medium</td><td class="num" data-value="10.680355920602327">10.68</td><td class="num" data-value="3250.0">3,250</td><td class="num" data-value="3.31">3.31</td><td class="num" data-value="70.17543859649122">70</td><td class="num" data-value="0.2">0.2</td><td class="num" data-value="83.33333333333334">83</td><td class="" data-value="2">normal</td></tr>
+<tr><td class="" data-value="20260624">24 Jun 2026</td><td class="" data-value="4 1/8% Treasury Gilt 2031">4 1/8% Treasury Gilt 2031</td><td class="" data-value="1">short</td><td class="num" data-value="4.700889801505818">4.70</td><td class="num" data-value="4250.0">4,250</td><td class="num" data-value="3.47">3.47</td><td class="num" data-value="84.84848484848484">85</td><td class="num" data-value="0.1">0.1</td><td class="num" data-value="98.48484848484848">98</td><td class="" data-value="3">strong</td></tr>
+<tr><td class="" data-value="20260616">16 Jun 2026</td><td class="" data-value="4 7/8% Treasury Gilt 2036">4 7/8% Treasury Gilt 2036</td><td class="" data-value="2">medium</td><td class="num" data-value="10.124572210814511">10.12</td><td class="num" data-value="4250.0">4,250</td><td class="num" data-value="3.46">3.46</td><td class="num" data-value="84.21052631578947">84</td><td class="num" data-value="0.1">0.1</td><td class="num" data-value="96.49122807017544">96</td><td class="" data-value="3">strong</td></tr>
+<tr><td class="" data-value="20260611">11 Jun 2026</td><td class="" data-value="4% Treasury Gilt 2029">4% Treasury Gilt 2029</td><td class="" data-value="1">short</td><td class="num" data-value="2.945927446954141">2.95</td><td class="num" data-value="5000.0">5,000</td><td class="num" data-value="3.6">3.60</td><td class="num" data-value="93.93939393939394">94</td><td class="num" data-value="0.2">0.2</td><td class="num" data-value="85.60606060606061">86</td><td class="" data-value="3">strong</td></tr>
+<tr><td class="" data-value="20260602">02 Jun 2026</td><td class="" data-value="4 5/8% Green Gilt 2037">4 5/8% Green Gilt 2037</td><td class="" data-value="2">medium</td><td class="num" data-value="10.76249144421629">10.76</td><td class="num" data-value="3250.0">3,250</td><td class="num" data-value="3.63">3.63</td><td class="num" data-value="95.6140350877193">96</td><td class="num" data-value="0.2">0.2</td><td class="num" data-value="85.96491228070175">86</td><td class="" data-value="3">strong</td></tr>
+<tr><td class="" data-value="20260527">27 May 2026</td><td class="" data-value="4 1/8% Treasury Gilt 2033">4 1/8% Treasury Gilt 2033</td><td class="" data-value="1">short</td><td class="num" data-value="6.778918548939083">6.78</td><td class="num" data-value="4000.0">4,000</td><td class="num" data-value="3.38">3.38</td><td class="num" data-value="81.81818181818183">82</td><td class="num" data-value="0.2">0.2</td><td class="num" data-value="86.36363636363636">86</td><td class="" data-value="3">strong</td></tr>
+<tr><td class="" data-value="20260521">21 May 2026</td><td class="" data-value="4 7/8% Treasury Gilt 2036">4 7/8% Treasury Gilt 2036</td><td class="" data-value="2">medium</td><td class="num" data-value="10.195756331279945">10.20</td><td class="num" data-value="4000.0">4,000</td><td class="num" data-value="3.45">3.45</td><td class="num" data-value="85.96491228070175">86</td><td class="num" data-value="0.3">0.3</td><td class="num" data-value="69.2982456140351">69</td><td class="" data-value="2">normal</td></tr>
+</tbody>
+</table></div>
+</section>
+</main>
+<footer class="wrap">
+<p>Source: UK Debt Management Office (D2.1A). Data as of 03 Nov 2026. Code: <a href="https://github.com/tbysmll/gilt-auction-monitor">GitHub</a>. For learning purposes; not investment advice.</p>
+</footer>
+<script>
+document.querySelectorAll("th[data-type]").forEach(function (th) {        // Every heading that can be sorted...
+  th.addEventListener("click", function () {                             // ...waits for a click
+    var table = th.closest("table");                                     // The table this heading belongs to
+    var body = table.tBodies[0];                                         // Its rows live in the table body
+    var col = th.cellIndex;                                              // Which column was clicked (0 = first)
+    var up = th.getAttribute("aria-sort") !== "ascending";               // Sort low-to-high, unless it already is
+    table.querySelectorAll("th").forEach(function (h) { h.removeAttribute("aria-sort"); });  // Clear the old arrows
+    th.setAttribute("aria-sort", up ? "ascending" : "descending");       // Mark the new direction (CSS draws the arrow)
+    var rows = Array.from(body.rows);                                    // The rows as a list that can be sorted
+    rows.sort(function (a, b) {                                          // Compare two rows at a time
+      var x = a.cells[col].dataset.value, y = b.cells[col].dataset.value;  // Their sort values in this column
+      var diff = th.dataset.type === "num" ? parseFloat(x) - parseFloat(y) : x.localeCompare(y);  // Numbers by size, text A-Z
+      return up ? diff : -diff;                                          // Reverse it for high-to-low
+    });                                                                  // End of the comparison
+    rows.forEach(function (row) { body.appendChild(row); });             // Put the rows back in the new order
+  });                                                                    // End of what a click does
+});                                                                      // End of the loop over headings
+</script>
+</body>
+</html>

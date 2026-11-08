@@ -1,0 +1,19 @@
+# Files Git should never upload to GitHub.
+# (Git only reads comments on their own line, so each note sits above its rule.)
+
+# Your private API key
+.env
+
+# Python's compiled cache files, regenerated automatically
+__pycache__/
+
+# The virtual environment (installed libraries): large and machine-specific
+.venv/
+
+# Your personal Claude Code permission settings (CLAUDE.md is shared; this file isn't)
+.claude/settings.local.json
+
+# The DMO's raw downloads (Excel files and PDF notices): anyone can download them from the DMO, see README.md
+data/**/*.xls
+data/**/*.xlsx
+data/**/*.pdf

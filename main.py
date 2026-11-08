@@ -262,7 +262,7 @@ def main():
     print(f"Written to {page}")                    # Where it is (open it in a browser to check it)
 
     step(9, "README")                              # Stage 9
-    front_page = readme.write_readme(scored, result, chart_list, data_date, comparison)  # Write README.md
+    front_page = readme.write_readme(comparison, data_date)  # Write README.md (with the standard comparison)
     print(f"Written to {front_page}")              # Where it is
     print("\nDone.")                               # Finished
 

@@ -20,9 +20,11 @@ import subprocess                                  # Runs other programs (main.p
 import sys                                         # sys.executable (this Python) and sys.exit (stop with a message)
 from pathlib import Path                           # Handles folder and file paths the same way on every system
 
+import config                                      # Our own config.py: the live website's address (PAGES_URL)
+
 PROJECT_DIR = Path(__file__).resolve().parent      # The project folder: the folder this file is in
 PUBLISHED = ["docs", "output"]                     # The only folders this script commits: the website and the run results
-PAGES_URL = "https://tbysmll.github.io/gilt-auction-monitor/"  # The live website
+PAGES_URL = config.PAGES_URL                       # The live website (set in config.py)
 
 
 def read_options():

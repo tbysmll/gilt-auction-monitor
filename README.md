@@ -1,56 +1,71 @@
 # Gilt Auction Monitor
 
-Scores every UK government bond (gilt) auction held by the Debt Management Office (DMO) for demand and, optionally, drafts a short review of the latest one with Claude. By Toby Small.
+Scores every UK government bond (gilt) auction since 1998 for investor demand: how much was bid (cover) and how tightly the bids were priced (tail), compared with similar auctions over the previous three years.
+It builds a one-page website with charts, a longer-run comparison and an optional Claude-drafted review of the latest auction.
 
-**Live page: [https://tbysmll.github.io/gilt-auction-monitor/](https://tbysmll.github.io/gilt-auction-monitor/)** · Data as of 03 Nov 2026
+[![The Gilt Auction Monitor website](docs/screenshot.png)](https://tbysmll.github.io/gilt-auction-monitor/)
 
-Each conventional gilt auction is scored on two measures of demand, compared with auctions of similar maturity over the previous three years:
+**Live site:** [https://tbysmll.github.io/gilt-auction-monitor/](https://tbysmll.github.io/gilt-auction-monitor/) · data as of 03 Nov 2026
 
-- **Cover** (bid-to-cover ratio): amount bid divided by amount sold. Higher means more demand.
-- **Tail**: yield at the lowest accepted price minus yield at the average accepted price, in basis points (1bp = 0.01%). Narrower means bids were bunched together: steadier demand.
+## Quick start
 
-## Latest auction: 4 5/8% Green Gilt 2037, 03 Nov 2026
+You need [Python](https://www.python.org/downloads/) 3.12 or later and [Git](https://git-scm.com/). On a Mac or Linux, type `python3` where it says `python`.
 
-| Measure | Value | Compared with peers |
+```
+git clone https://github.com/tbysmll/gilt-auction-monitor.git
+cd gilt-auction-monitor
+python -m venv .venv
+.venv\Scripts\activate            # Windows
+source .venv/bin/activate         # Mac or Linux
+pip install -r requirements.txt
+python main.py --sample           # try it with the bundled data: nothing is downloaded
+python main.py                    # live data: downloads the latest DMO reports
+```
+
+Then open `docs/index.html` in your browser. Each run also writes `output/summary.md` (a record of the run) and `output/comparison.md` (the longer-run table).
+
+## If the download is blocked
+
+The DMO's website has bot protection, so it often refuses automatic downloads. When that happens, `python main.py` lists exactly which files to download by hand and carries on with the newest copies already saved. The tool needs these three reports:
+
+| Report | Code | Download page | Save in |
+|---|---|---|---|
+| Outright Gilt Auctions | D2.1A | [https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A) | `data/` |
+| Gilts in Issue | D1A | [https://www.dmo.gov.uk/data/ExportReport?reportCode=D1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D1A) | `data/maturities/` |
+| Redemption Details of Redeemed Gilts | D1C | [https://www.dmo.gov.uk/data/ExportReport?reportCode=D1C](https://www.dmo.gov.uk/data/ExportReport?reportCode=D1C) | `data/maturities/` |
+
+Open each page, export the report as Excel, and save the file in the folder shown. The file name doesn't matter: each file is recognised by the title inside it. Then run `python main.py --offline` to use them without trying the download again.
+
+## Command-line options
+
+| Option | What it does | Example |
 |---|---|---|
-| Verdict | **normal** | strong if both percentiles ≥ 75; weak if either ≤ 25 |
-| Cover | 3.38x | higher than 73% of peers |
-| Tail | 0.3bp | narrower than 60% of peers |
-| Yield at average price | 5.268% | |
-| Amount sold | £3,250m nominal | |
-| Bucket | medium (10.3 years to maturity) | 55 peers in the previous 3 years |
+| *(none)* | Downloads the data, scores every auction, draws the charts and writes the website, summary and README. No Claude needed. | `python main.py` |
+| `--sample` | Uses the copies of the three reports in `sample_data/` (data as of 03 Nov 2026) instead of downloading. | `python main.py --sample` |
+| `--offline` | Skips the download and uses the reports already saved in `data/`. | `python main.py --offline` |
+| `--review` | Also asks Claude to draft a short review of the latest auction, then checks every auction fact it quotes against the data. Needs [Claude Code](https://claude.com/claude-code) installed and logged in; without it, the run carries on with no review. | `python main.py --review` |
+| `--compare` | Compares any two periods (default 2015-2021 and 2023-2025). Each period needs at least 10 auctions. | `python main.py --compare 2010-2014 2023-2025` |
+| `--bucket` | Limits the comparison to one maturity bucket: `short`, `medium`, `long` or `all` (default). | `python main.py --compare 2010-2014 2023-2025 --bucket long` |
 
-## Latest charts
+Options can be combined, e.g. `python main.py --offline --review`. `python main.py --help` lists them all. `--compare` and `--bucket` change the printed table and `output/comparison.md`; the website always shows the standard comparison below.
 
-**1. Cover at the latest auction was 3.38x, higher than 73% of medium-bucket auctions in the past 3 years**
+## How the scoring works
 
-![1. Cover at the latest auction was 3.38x, higher than 73% of medium-bucket auctions in the past 3 years](docs/charts/cover_history.svg)
+When the government borrows, the DMO auctions gilts to investors. Two numbers from each auction show how keen investors were:
 
-Bid-to-cover ratio (amount bid / amount sold) at each conventional gilt auction, by maturity bucket, times. Gold dot: latest auction. No long-bucket auctions since 21 Oct 2025. Source: UK Debt Management Office (D2.1A). Data as of 03 Nov 2026.
+- **Cover** (the bid-to-cover ratio) is the amount bid divided by the amount sold. A cover of 3 means £3 was bid for every £1 of gilts on offer. Higher means more demand.
+- **Tail** is how far the weakest accepted bid was from the average one, measured in yield: the yield at the lowest accepted price minus the yield at the average accepted price, in basis points (1bp = 0.01%). A narrow tail means bidders agreed on the price; a wide one means some only bought at a discount.
 
-**2. The latest tail was 0.3bp, narrower than the medium-bucket median of 0.4bp**
+Each auction is then compared with others like it:
 
-![2. The latest tail was 0.3bp, narrower than the medium-bucket median of 0.4bp](docs/charts/tail_history.svg)
-
-Tail (yield at lowest accepted price minus yield at average accepted price) at each conventional gilt auction, by maturity bucket, basis points. Gold dot: latest auction. No long-bucket auctions since 21 Oct 2025. Source: UK Debt Management Office (D2.1A). Data as of 03 Nov 2026.
-
-**3. Of the last 10 auctions, 4 scored strong, 6 normal and 0 weak**
-
-![3. Of the last 10 auctions, 4 scored strong, 6 normal and 0 weak](docs/charts/scorecard.svg)
-
-Percentiles against auctions in the same bucket over the previous 3 years (higher = better). Strong: both at least 75. Weak: either 25 or lower. Source: UK Debt Management Office (D2.1A). Data as of 03 Nov 2026.
-
-## Claude-drafted review
-
-Drafted by Claude from the latest auction's facts and scores only, with no other data or tools; I check and rewrite it.
-
-> The 3 November 2026 auction of £3,250 million nominal of the 4 5/8% Green Gilt 2037, which has 10.34 years to maturity and sits in the medium (7 to 15 years) bucket, drew a bid-to-cover ratio of 3.38 at an average accepted price of £94.919, equivalent to a yield of 5.268%. The tail was 0.3 basis points, and there was no take-up at the post-auction option facility (PAOF). Against a peer group of 55 medium-bucket conventional auctions held in the previous 3 years, cover was higher than in 72.7% of them and the tail was narrower than in 60.0%. Both measures were above the middle of the peer range, but neither reached the threshold of 75 needed for a strong rating. On our fixed rule, which rates an auction strong only when both percentiles are at least 75 and weak when either is 25 or lower, the auction is classed as normal.
-
-**Numbers verified against DMO data: 8 of 8 facts matched.**
+1. **Same maturity.** Gilts are grouped by years left until they're repaid, using the DMO's buckets: short (under 7 years), medium (7 to 15) and long (over 15). Index-linked gilts are left out: every winning bidder pays the same price, so there's no tail.
+2. **Same recent period.** An auction's peers are the auctions in its bucket over the previous 3 years (at least 10 are needed to score it).
+3. **Percentiles.** The cover percentile is the share of peers with a lower cover; the tail percentile is the share with a wider tail. Ties count as half. For both, higher is better.
+4. **One rule for the label.** *Strong* if both percentiles are at least 75; *weak* if either is 25 or lower; otherwise *normal*. One bad measure is enough to call an auction weak.
 
 ## Longer-run view
 
-Across all conventional auctions, median cover rose from 2.24x in 2015-21 to 2.98x in 2023-25; the median tail widened from 0.3bp in 2015-21 to 0.5bp in 2023-25; and the median yield at the average accepted price rose from 0.83% in 2015-21 to 4.31% in 2023-25.
+Conventional auctions in 2015-21 compared with 2023-25:
 
 | Group | Period | Auctions | Median cover (x) | Median tail (bp) | Median yield (%) |
 |---|---|---|---|---|---|
@@ -63,51 +78,18 @@ Across all conventional auctions, median cover rose from 2.24x in 2015-21 to 2.9
 | long | 2015-21 | 120 | 2.16 | 0.3 | 1.27 |
 | long | 2023-25 | 44 | 3.02 | 0.4 | 4.61 |
 
-Conventional auctions only; each period runs from January of its first year to December of its last. Medians are the middle value, so a single unusual auction can't move them much.
+Across all conventional auctions, median cover rose from 2.24x in 2015-21 to 2.98x in 2023-25; the median tail widened from 0.3bp in 2015-21 to 0.5bp in 2023-25; and the median yield at the average accepted price rose from 0.83% in 2015-21 to 4.31% in 2023-25.
 
-## Method
+Each period runs from January of its first year to December of its last. Medians are the middle value, so a single unusual auction can't move them much. Try other periods with `--compare`.
 
-- Only conventional gilts are scored. Each auction goes in the DMO's maturity bucket for its years left to maturity on the day: short (under 7), medium (7 to 15) or long (over 15).
-- Its peers are the auctions in the same bucket over the previous 3 years. With fewer than 10 peers it isn't scored.
-- Cover percentile: the share of peers with a lower cover. Tail percentile: the share of peers with a wider tail. Ties count as half. For both, higher is better.
-- Strong: both percentiles at least 75. Weak: either 25 or lower. Otherwise normal. So one bad measure is enough to call an auction weak.
-- Claude drafts the review from the facts in the headline box only, with no other data or tools. Each auction fact it quotes is then checked against those facts automatically, and I check the draft myself.
+## Data source
 
-## Data challenges
+All data comes from the [UK Debt Management Office (DMO)](https://www.dmo.gov.uk/data/): the auction results are series **D2.1A**, [Outright Gilt Auctions](https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A), and the redemption dates come from **D1A** (Gilts in Issue) and **D1C** (Redemption Details of Redeemed Gilts). `sample_data/` holds unchanged copies of the three reports as of 03 Nov 2026. The code is MIT licensed (see `LICENSE`); that licence covers the code only, not the DMO's data.
 
-- The DMO's website blocks automated downloads with a captcha, so the auction file is downloaded by hand and the site is rebuilt on my own computer. A scheduled cloud job (e.g. GitHub Actions) isn't used, because the captcha would block it too.
-- Index-linked gilt auctions are sold at a single price that every successful bidder pays, so they have no tail and are left out. 918 conventional auctions since 1998 are scored.
-- The auction file gives only each gilt's maturity year. Exact redemption dates come from two more DMO reports (gilts in issue, and redeemed gilts); the year alone would put some gilts in the wrong bucket.
-- The DMO file has no 'amount bid' column, so cover can't be recalculated from it. Instead, the amount bid is copied from the DMO's result notice for spot checks.
-- Cover check, 03 Nov 2026: £10,980.5m bid / £3,250m sold = 3.3786, against the DMO's 3.38: matches.
-- Data error: the 4¼% Treasury Gilt 2039 auction on 04 Mar 2009 shows a tail of -5.5bp. A tail can't be negative, so it is left out of all scoring.
-- No long-bucket auctions since 21 Oct 2025. Its latest values on the charts are therefore not recent.
+## Built by Toby Small
 
-## My read: coming soon
+Built by **Toby Small**. Suggestions and bug reports are welcome as [GitHub issues](https://github.com/tbysmll/gilt-auction-monitor/issues).
 
-## Setup
+**Make your own copy:** click **Use this template** at the top of the GitHub page, then put your own name and links in `config.py`.
 
-Runs on your own computer: the DMO's website blocks automated downloads, so a cloud job can't fetch the data.
-
-1. Install Python 3.12 or later and, in this folder, create a virtual environment and install the libraries (on a Mac or Linux, type `python3` where it says `python`):
-   - `python -m venv .venv`
-   - Activate it: Windows `.venv\Scripts\activate`; Mac or Linux `source .venv/bin/activate`
-   - `pip install -r requirements.txt` (exact versions, so you get the libraries it was tested with)
-2. **Try it straight away** with the sample data in `sample_data/` (the three DMO reports as of 03 Nov 2026): `python main.py --sample`. Nothing is downloaded.
-3. **For current data**, run `python main.py`. It tries to download the three DMO reports it needs. If the DMO's bot protection blocks a download, it lists exactly which files to download by hand, with a link and the folder for each, and meanwhile uses the newest copies already saved:
-   - Outright Gilt Auctions ([D2.1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A)) → save in `data/`
-   - Gilts in Issue ([D1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D1A)) → save in `data/maturities/`
-   - Redemption Details of Redeemed Gilts ([D1C](https://www.dmo.gov.uk/data/ExportReport?reportCode=D1C)) → save in `data/maturities/`
-4. Once the files are saved, `python main.py --offline` skips the download attempt and uses them.
-   - Compare any two periods, for all auctions or one bucket: `python main.py --compare 2010-2014 2023-2025 --bucket long`. The table is printed and saved to `output/comparison.md` (each period needs at least 10 auctions; the site keeps the standard view).
-5. Optionally, add amounts bid from DMO result notices to `data/bids_check.csv` to recheck cover.
-
-Each run scores the auctions, runs the longer-run view, draws the charts and writes `docs/index.html`, `output/summary.md` and this README. No Claude Code or API key is needed.
-
-**Optional: the Claude-drafted review.** Install [Claude Code](https://claude.com/claude-code), log in with a Claude subscription (`claude --version` should work in a new terminal), then run `python main.py --review`. It also drafts a review of the latest auction and checks every auction fact it quotes. If Claude Code isn't found, the run carries on without the review.
-
-**Publishing (for the repo owner).** `python publish.py` runs `main.py --review`, then commits only `docs/` and `output/` as "Update: auction of <date>" and pushes them to GitHub, which republishes the site. Add `--offline` to skip downloading. It works on Windows, Mac and Linux.
-
----
-
-Source: UK Debt Management Office (D2.1A). Data as of 03 Nov 2026. For learning purposes; not investment advice.
+*For learning purposes; not investment advice.*

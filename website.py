@@ -26,15 +26,16 @@ import pandas as pd                                # Tables of data; here only p
 
 import analysis                                    # Our own analysis.py: the longer-run comparison's headline sentence
 import chart_style as style                        # The house palette, so the page matches the charts
-import charts                                     # Our own charts.py: finds the latest auction and the stale-bucket note
+import config                                      # Our own config.py: the author's name and the GitHub links
+import charts                                    # Our own charts.py: finds the latest auction and the stale-bucket note
 import review                                      # Our own review.py: counts how many of the draft's numbers matched
 import scoring                                     # Our own scoring.py: column names, cut-offs and the cover check
 
 PROJECT_DIR = Path(__file__).parent                # The folder this script is in
 SITE_FILE = PROJECT_DIR / "docs" / "index.html"    # The web page; "index.html" is the file a website shows by default
 MY_READ_FILE = PROJECT_DIR / "my_read.md"          # Toby's own view of the latest auction, written by hand
-AUTHOR = "Toby Small"                              # Shown in the masthead (check the spelling before publishing)
-REPO_URL = "https://github.com/tbysmll/gilt-auction-monitor"  # The code on GitHub, linked from the footer
+AUTHOR = config.AUTHOR                             # Shown in the masthead (set in config.py)
+REPO_URL = config.REPO_URL                         # The code on GitHub, linked from the footer (set in config.py)
 TABLE_ROWS = 20                                    # How many recent auctions the table shows
 
 # The page's styling (CSS), copied from the Oil Curve Tracker's report.py so the two sites match.

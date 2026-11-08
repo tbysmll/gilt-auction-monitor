@@ -106,6 +106,15 @@ def build_prompt(facts_text):
     return template.replace("{facts}", facts_text)  # Swap the slot for the real facts
 
 
+def claude_available():
+    """Check whether the Claude Code command line ("claude") can be found on this computer.
+
+    Takes no inputs. Returns True if it can, False if not.
+    Exists so main.py can skip the review politely when Claude Code isn't installed.
+    """
+    return shutil.which("claude") is not None      # shutil.which searches the PATH, as typing "claude" in a terminal does
+
+
 def ask_claude(prompt):
     """Send the prompt to Claude through the Claude Code command line and return Claude's reply as text.
 
@@ -113,7 +122,7 @@ def ask_claude(prompt):
     Returns the draft review text (the "result" field of Claude's JSON reply).
     Stops with a clear message if the claude command is missing, fails, times out or returns an error.
     """
-    if shutil.which("claude") is None:             # Windows can't find the claude command at all
+    if not claude_available():                     # Windows can't find the claude command at all
         sys.exit("Couldn't find the 'claude' command. Check that 'claude --version' works in a new terminal "  # Stop
                  "(Claude Code must be installed and on your PATH), then run this again.")  # and say how to fix it
 

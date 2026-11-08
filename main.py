@@ -3,17 +3,19 @@ main.py - runs the whole Gilt Auction Monitor in one go.
 
   1. Download: get the DMO's auction results (or, if its bot protection blocks us, use the newest copy in data/).
   2. Scoring: bucket and score every conventional auction (scoring.py), and recheck cover where we have the bids.
-  3. Review: ask Claude to draft a short review of the latest auction (review.py).
-  4. Verification: check the auction facts and scores quoted in the draft against the facts Claude was given.
+  3. Review (only with --review): ask Claude to draft a short review of the latest auction (review.py).
+  4. Verification (only with --review): check the auction facts quoted in the draft against the facts Claude was given.
   5. Charts: draw the three dashboard charts into docs/charts/ (charts.py).
   6. Longer-run view: compare 2015-21 with 2023-25 (analysis.py).
   7. Summary: write output/summary.md, a one-page record of this run.
   8. Website: write docs/index.html, the page GitHub Pages publishes (website.py).
   9. README: write README.md, the project's front page on GitHub (readme.py).
 
-Run it with:  python main.py
+Run it with:  python main.py             (everything except the Claude review; no Claude Code needed)
+         or:  python main.py --review    (also drafts and fact-checks a review; needs Claude Code installed)
 """
 
+import argparse                                    # Reads options typed after the script's name, e.g. --review
 from pathlib import Path                           # Handles folder and file paths the same way on Windows and Mac
 
 import analysis                                    # Our own analysis.py: the longer-run comparison of two periods
@@ -28,6 +30,21 @@ PROJECT_DIR = Path(__file__).parent                # The folder this script is i
 SUMMARY_FILE = PROJECT_DIR / "output" / "summary.md"  # Where the run summary is written
 
 
+def read_options():
+    """Read the options typed after "python main.py".
+
+    Takes no inputs (argparse reads them from the command line). Returns the options; options.review is True only
+    if --review was typed.
+    Exists so the Claude review is something you switch on, not something everyone needs.
+    """
+    parser = argparse.ArgumentParser(description="Score UK gilt auctions and build the charts, website and README.")  # The
+                                                   # help text shown by "python main.py --help"
+    parser.add_argument("--review", action="store_true",  # A switch: present = True, absent = False
+                        help="also ask Claude to draft a review of the latest auction and fact-check it "  # What it does
+                             "(needs Claude Code installed and logged in)")  # ...and what it needs
+    return parser.parse_args()                     # Read what was typed and hand it back
+
+
 def step(number, text):
     """Print a clear heading for each stage, so it's obvious how far the run has got.
 
@@ -38,21 +55,46 @@ def step(number, text):
     print(f"\n=== Step {number}: {text} ===")      # e.g. "=== Step 1: Download ==="
 
 
+def run_review(scored):
+    """Steps 3 and 4: ask Claude for a draft review and fact-check it, if Claude Code is available.
+
+    scored -- the scored table from scoring.load_scored()
+    Returns the review step's results (from review.draft_review()), or None if the claude command can't be found,
+    in which case it prints a friendly note and the rest of the run carries on without a review.
+    If claude is found but then fails, review.py still stops with a clear error, so a real problem isn't hidden.
+    """
+    step(3, "Claude-drafted review")               # Stage 3
+    if not review.claude_available():              # The claude command isn't installed (or isn't on the PATH)
+        print("Claude Code isn't installed on this computer (the 'claude' command wasn't found), so there's no\n"  # A
+              "review this time. Everything else still runs. To add reviews, install Claude Code from\n"  # friendly
+              "https://claude.com/claude-code, log in, check 'claude --version' works in a new terminal,\n"  # note on
+              "then run: python main.py --review")  # what to do
+        return None                                # Carry on without a review
+    result = review.draft_review(scored)           # Prompt, Claude, save the draft, check its facts
+    print(f"\n{result['draft']}\n\nSaved to {result['path']}")  # The draft and where it was saved
+
+    step(4, "Verification")                        # Stage 4
+    print(result["checks"].to_string(index=False))  # Each fact-like number in the draft and its verdict
+    print(review.verification_text(result["checks"])[1])  # e.g. "Numbers verified ...: 8 of 8 facts matched"
+    missing = review.unmentioned_facts(result["checks"])  # Facts the draft didn't quote
+    if missing:                                    # Any...
+        print(f"Not mentioned (not an error): {', '.join(missing)}")  # ...listed for information
+    return result                                  # Everything the summary, website and README need
+
+
 def write_summary(data_date, facts, result, cover_check, chart_list, comparison):
-    """Write output/summary.md: the latest auction, its scores, the draft review, its fact check, the charts and
-    the longer-run view.
+    """Write output/summary.md: the latest auction, its scores, the draft review and its fact check (if there is
+    one), the cover check, the charts and the longer-run view.
 
     data_date   -- the date the DMO produced the data (a pandas Timestamp)
-    facts       -- the facts given to Claude, from review.latest_auction_facts()
-    result      -- the review step's results, from review.draft_review()
+    facts       -- the latest auction's facts and scores, from review.latest_auction_facts()
+    result      -- the review step's results, from review.draft_review(), or None if no review was run
     cover_check -- the cover recalculation table, from scoring.check_cover()
     chart_list  -- the charts' titles and paths, from charts.make_charts()
     comparison  -- the longer-run comparison, from analysis.compare_periods()
     Returns the path of the summary file.
     """
     markdown_table = readme.markdown_table         # Short name for the table formatter in readme.py
-    passed, verdict = review.verification_text(result["checks"])  # e.g. (True, "Numbers verified ...: 8 of 8 facts matched")
-    verdict = f"{verdict}." if passed else f"**{verdict}.**"  # A warning is shown in bold
 
     lines = [                                      # The summary, one line of Markdown per item
         "# Gilt Auction Monitor: run summary",     # Title
@@ -65,15 +107,19 @@ def write_summary(data_date, facts, result, cover_check, chart_list, comparison)
         "|---|---|",                               # ...and its divider line
     ]                                              # End of the list
     lines += [f"| {name} | {value} |" for name, value in facts.items()]  # One row per fact
+    lines += ["", "## Claude-drafted review", ""]  # Section heading
+    if result is None:                             # No review this run...
+        lines.append("Not run this time. Run `python main.py --review` (needs Claude Code) to add one.")  # ...say so
+    else:                                          # A review was drafted...
+        passed, verdict = review.verification_text(result["checks"])  # e.g. (True, "Numbers verified ...: 8 of 8 ...")
+        lines += [                                 # ...so show it with its fact check
+            "> " + result["draft"],                # The draft, shown as a quote
+            "",                                    # Blank line
+            f"{verdict}." if passed else f"**{verdict}.**",  # The fact check result (a warning is shown in bold)
+            "",                                    # Blank line
+            markdown_table(result["checks"]),      # Every fact-like number in the draft, which fact it matched, its verdict
+        ]                                          # End of the list
     lines += [                                     # Next sections
-        "",                                        # Blank line
-        "## Claude-drafted review (to be checked and rewritten)",  # Section heading
-        "",                                        # Blank line
-        "> " + result["draft"],                    # The draft, shown as a quote
-        "",                                        # Blank line
-        verdict,                                   # The fact check result
-        "",                                        # Blank line
-        markdown_table(result["checks"]),          # Every fact-like number in the draft, which fact it matched, its verdict
         "",                                        # Blank line
         "## Cover check (amount bid / amount sold, against the DMO's stated cover)",  # Section heading
         "",                                        # Blank line
@@ -87,9 +133,9 @@ def write_summary(data_date, facts, result, cover_check, chart_list, comparison)
         lines += ["", f"**{chart['title']}**", "",  # Its numbered title in bold
                   f"![{chart['title']}]({relative.as_posix()})", "",  # The image (as_posix: forward slashes for the web)
                   f"{chart['subtitle']} {chart['source']}"]  # Its subtitle and source line underneath
-    lines += ["", "## Longer-run view", "", analysis.headline(comparison), "",  # The
-              markdown_table(analysis.formatted(comparison))]  # (table with its decimals lined up)
-                                                   # two-period comparison: its headline sentence, then the table
+    lines += ["", "## Longer-run view", "",        # The two-period comparison: its heading...
+              analysis.headline(comparison), "",   # ...its one-sentence summary...
+              markdown_table(analysis.formatted(comparison))]  # ...and the table, with its decimals lined up
 
     SUMMARY_FILE.parent.mkdir(exist_ok=True)       # Create output/ if it doesn't exist yet
     SUMMARY_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")  # Save it (UTF-8, so "£" is kept)
@@ -99,8 +145,10 @@ def write_summary(data_date, facts, result, cover_check, chart_list, comparison)
 def main():
     """Run every stage in order and print where the results are.
 
-    Takes no inputs. Returns nothing; prints to the screen and writes files.
+    Takes no inputs (reads --review from the command line). Returns nothing; prints to the screen and writes files.
     """
+    options = read_options()                       # Was --review typed?
+
     step(1, "Download")                            # Stage 1
     path = dmo.get_auction_file()                  # Downloaded, or the newest saved copy
     data_date = dmo.data_date(path)                # The date the DMO produced it
@@ -113,16 +161,11 @@ def main():
     if not cover_check.empty:                      # If any auctions were checked...
         print(cover_check.to_string(index=False))  # ...show the results
 
-    step(3, "Claude-drafted review")               # Stage 3
-    result = review.draft_review(scored)           # Prompt, Claude, save the draft, check its numbers
-    print(f"\n{result['draft']}\n\nSaved to {result['path']}")  # The draft and where it was saved
-
-    step(4, "Verification")                        # Stage 4
-    print(result["checks"].to_string(index=False))  # Each fact-like number in the draft and its verdict
-    print(review.verification_text(result["checks"])[1])  # e.g. "Numbers verified ...: 8 of 8 facts matched"
-    missing = review.unmentioned_facts(result["checks"])  # Facts the draft didn't quote
-    if missing:                                    # Any...
-        print(f"Not mentioned (not an error): {', '.join(missing)}")  # ...listed for information
+    if options.review:                             # --review was typed...
+        result = run_review(scored)                # ...so try steps 3 and 4 (None if Claude Code isn't installed)
+    else:                                          # Otherwise...
+        print("\n(Steps 3-4, the Claude-drafted review, are off. Add --review to turn them on.)")  # ...say they're
+        result = None                              # skipped, and carry on without a review
 
     step(5, "Charts")                              # Stage 5
     chart_list = charts.make_charts(scored)        # Draw all three; get their titles and paths
@@ -135,7 +178,9 @@ def main():
     print(analysis.headline(comparison))           # Its one-sentence summary
 
     step(7, "Summary")                             # Stage 7
-    summary = write_summary(data_date, result["facts"], result, cover_check, chart_list, comparison)  # output/summary.md
+    facts = result["facts"] if result else review.latest_auction_facts(scored)  # The latest auction's facts (worked
+                                                   # out here if there was no review; this doesn't call Claude)
+    summary = write_summary(data_date, facts, result, cover_check, chart_list, comparison)  # Write output/summary.md
     print(f"Written to {summary}")                 # Where it is
 
     step(8, "Website")                             # Stage 8

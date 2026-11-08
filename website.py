@@ -6,7 +6,8 @@ projects look like a matching pair:
   - a navy masthead with a gold rule: title, author and "Data as of" date,
   - a headline box for the latest auction: six tiles (label, cover, tail, yield, amount sold, bucket),
   - the three charts as cards (FIGURE 1-3, each with its takeaway title, subtitle and source line),
-  - a sidebar: the Claude-drafted review with its number-check badge, "My read" (from my_read.md), Method, Data challenges,
+  - a sidebar: the Claude-drafted review with its fact-check badge (only after python main.py --review),
+    "My read" (from my_read.md), Method, Data challenges,
   - a sortable table of the last 20 conventional auctions,
   - a footer with the DMO source line and a link to the code on GitHub.
 
@@ -189,13 +190,14 @@ def verification_lines(result):
     return f'<p class="warn">{html.escape(text)}.</p>'  # The gold-bordered warning: shown, never hidden
 
 
-def method_notes():
+def method_notes(with_review=True):
     """The "Method" section: the scoring rule in plain English, one bullet per step.
 
-    Takes no inputs. Returns a list of sentences.
+    with_review -- True if this run includes a Claude-drafted review, so the method also explains how it's made
+    Returns a list of sentences.
     """
     low, high = scoring.SHORT_LIMIT, scoring.LONG_LIMIT  # The bucket limits, 7 and 15 years
-    return [                                       # One sentence per step
+    notes = [                                      # One sentence per step
         f"Only conventional gilts are scored. Each auction goes in the DMO's maturity bucket for its years left to "  # Step 1:
         f"maturity on the day: short (under {low}), medium ({low} to {high}) or long (over {high}).",  # buckets
         f"Its peers are the auctions in the same bucket over the previous {scoring.WINDOW_YEARS} years. With fewer "  # Step 2:
@@ -204,9 +206,12 @@ def method_notes():
         "tail. Ties count as half. For both, higher is better.",  # percentiles
         f"Strong: both percentiles at least {scoring.STRONG_CUTOFF}. Weak: either {scoring.WEAK_CUTOFF} or lower. "  # Step 4:
         "Otherwise normal. So one bad measure is enough to call an auction weak.",  # the label
-        "Claude drafts the review from the facts in the headline box only, with no other data or tools. Every "  # Step 5:
-        "number in the draft is then checked against those facts automatically, and I check the draft myself.",  # the review
-    ]                                              # End of the method notes
+    ]                                              # End of the scoring steps
+    if with_review:                                # Only when there's a review on the page...
+        notes.append("Claude drafts the review from the facts in the headline box only, with no other data or tools. "  # ...Step 5:
+                     "Each auction fact it quotes is then checked against those facts automatically, and I check the "  # how the
+                     "draft myself.")              # review is made and checked
+    return notes                                   # The method, one sentence per step
 
 
 def data_challenges(scored):
@@ -303,7 +308,8 @@ def write_site(scored, result, chart_list, data_date, comparison):
     """Write docs/index.html, the one-page website.
 
     scored     -- the scored table from scoring.load_scored()
-    result     -- the review step's results, from review.draft_review()
+    result     -- the review step's results, from review.draft_review(), or None if no review was run (the review
+                  card is then left out and the sidebar starts with "My read")
     chart_list -- the charts' titles, subtitles, sources and paths, from charts.make_charts()
     data_date  -- the date the DMO produced the data (a pandas Timestamp)
     comparison -- the longer-run comparison, from analysis.compare_periods()
@@ -323,8 +329,8 @@ def write_site(scored, result, chart_list, data_date, comparison):
         '<meta charset="utf-8">',                  # The text encoding, so symbols like £ and ▲ display correctly
         '<meta name="viewport" content="width=device-width, initial-scale=1">',  # Fit the page to phone screens
         "<title>Gilt Auction Monitor</title>",     # The text on the browser tab
-        '<meta name="description" content="UK gilt auction results scored for demand (cover and tail), with a '  # Summary
-        'Claude-drafted review.">',                # for search engines
+        '<meta name="description" content="UK gilt auction results scored for demand (cover and tail) against '  # Summary
+        'comparable auctions.">',                  # for search engines
         f"<style>{STYLE}</style>",                 # The styling defined at the top of this file
         "</head>",                                 # End of the head
         "<body>",                                  # The visible page starts here
@@ -372,22 +378,26 @@ def write_site(scored, result, chart_list, data_date, comparison):
         ]                                          # End of this card's lines
     page.append("</div>")                          # End of the charts grid
 
-    page += ['<aside class="side">', '<div class="card">', "<h2>Claude-drafted review</h2>",  # The sidebar's first card
-             '<p class="asof-note">Drafted by Claude from the headline figures only; I check and rewrite it.</p>',  # What it is
-             verification_lines(result),           # The "X of X matched" badge, or a warning
-             f"<p>{esc(result['draft'])}</p>",     # The draft itself
-             "</div>"]                             # End of the card
+    page.append('<aside class="side">')            # The sidebar
+    if result is not None:                         # Only if this run drafted a review (python main.py --review)...
+        page += ['<div class="card">', "<h2>Claude-drafted review</h2>",  # ...the sidebar's first card
+                 '<p class="asof-note">Drafted by Claude from the headline figures only; I check and rewrite it.</p>',  # What it is
+                 verification_lines(result),       # The "X of X facts matched" badge, or a warning
+                 f"<p>{esc(result['draft'])}</p>",  # The draft itself
+                 "</div>"]                         # End of the card
+                                                   # (With no review, nothing is written here: no empty box, no gap.)
 
     my_read = read_my_read()                       # Toby's own view, if written (an empty list if not)
     if my_read:                                    # Written...
-        page += ['<div class="card">', "<h2>My read</h2>"]  # ...the second card, with its heading
+        page += ['<div class="card">', "<h2>My read</h2>"]  # ...its card, with its heading
         page += [f"<p>{esc(p)}</p>" for p in my_read]  # ...one <p> per paragraph
         page += ['<p class="foot">Written by hand, so it changes only when I update it.</p>', "</div>"]  # Make that clear
     else:                                          # Not written yet...
         page += ['<div class="card">', "<h2>My read: coming soon</h2>", "</div>"]  # ...say so, not a blank box
 
-    page += ['<div class="card">', "<h2>Method</h2>", "<ul>"]  # The third card
-    page += [f"<li>{esc(note)}</li>" for note in method_notes()]  # One bullet per step
+    page += ['<div class="card">', "<h2>Method</h2>", "<ul>"]  # The method card
+    page += [f"<li>{esc(note)}</li>" for note in method_notes(with_review=result is not None)]  # One bullet per step
+                                                   # (the bullet about Claude's draft only when there is one)
     page += ["</ul>", "</div>"]                    # End of the card
 
     page += ['<div class="card">', "<h2>Data challenges</h2>", "<ul>"]  # The fourth card

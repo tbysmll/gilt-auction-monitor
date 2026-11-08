@@ -38,21 +38,21 @@ def write_readme(scored, result, chart_list, data_date, comparison):
     challenges, my read, and setup instructions.
 
     scored     -- the scored table from scoring.load_scored()
-    result     -- the review step's results, from review.draft_review()
+    result     -- the review step's results, from review.draft_review(), or None if no review was run (the review
+                  section is then left out)
     chart_list -- the charts' titles, subtitles, sources and paths, from charts.make_charts()
     data_date  -- the date the DMO produced the data (a pandas Timestamp)
     comparison -- the longer-run comparison, from analysis.compare_periods()
     Returns the path of README.md.
     """
     latest = charts.latest_scored(scored)          # The auction the README is about
-    passed, verdict = review.verification_text(result["checks"])  # e.g. (True, "Numbers verified ...: 8 of 8 facts matched")
     my_read = website.read_my_read()               # Toby's own view, as paragraphs (empty if not written yet)
 
     lines = [                                      # The README, one line of Markdown per item
         "# Gilt Auction Monitor",                  # Title
         "",                                        # Blank line (Markdown needs these between blocks)
-        f"Scores every UK government bond (gilt) auction held by the Debt Management Office (DMO) for demand, and "  # What
-        f"drafts a short review of the latest one with Claude. By {website.AUTHOR}.",  # the project does, and who made it
+        f"Scores every UK government bond (gilt) auction held by the Debt Management Office (DMO) for demand and, "  # What
+        f"optionally, drafts a short review of the latest one with Claude. By {website.AUTHOR}.",  # it does; who made it
         "",                                        # Blank line
         f"**Live page: [{PAGES_URL}]({PAGES_URL})** · Data as of {data_date:%d %b %Y}",  # Link to the site, and data date
         "",                                        # Blank line
@@ -85,16 +85,21 @@ def write_readme(scored, result, chart_list, data_date, comparison):
                   f"![{chart['title']}]({relative})", "",  # The image
                   f"{chart['subtitle']} {chart['source']}"]  # Its subtitle and source line underneath
 
-    lines += [                                     # The Claude-drafted review
-        "",                                        # Blank line
-        "## Claude-drafted review",                # Section heading
-        "",                                        # Blank line
-        "Drafted by Claude from the latest auction's facts and scores only, with no other data or tools; I check "  # What
-        "and rewrite it.",                         # it is
-        "",                                        # Blank line
-        f"> {result['draft']}",                    # The draft, shown as a quote
-        "",                                        # Blank line
-        f"**{verdict}.**" if passed else f"**⚠ {verdict}.**",  # The fact check: a plain result, or a marked warning
+    if result is not None:                         # Only if this run drafted a review (python main.py --review)...
+        passed, verdict = review.verification_text(result["checks"])  # e.g. (True, "Numbers verified ...: 8 of 8 ...")
+        lines += [                                 # ...the Claude-drafted review section
+            "",                                    # Blank line
+            "## Claude-drafted review",            # Section heading
+            "",                                    # Blank line
+            "Drafted by Claude from the latest auction's facts and scores only, with no other data or tools; I check "  # What
+            "and rewrite it.",                     # it is
+            "",                                    # Blank line
+            f"> {result['draft']}",                # The draft, shown as a quote
+            "",                                    # Blank line
+            f"**{verdict}.**" if passed else f"**⚠ {verdict}.**",  # The fact check: a plain result, or a marked warning
+        ]                                          # End of the review section (with no review, it's simply left out)
+
+    lines += [                                     # The longer-run view and the method
         "",                                        # Blank line
         "## Longer-run view",                      # Section heading
         "",                                        # Blank line
@@ -108,7 +113,8 @@ def write_readme(scored, result, chart_list, data_date, comparison):
         "## Method",                               # Section heading
         "",                                        # Blank line
     ]                                              # End of the list
-    lines += [f"- {note}" for note in website.method_notes()]  # One bullet per step, the same as the website
+    lines += [f"- {note}" for note in website.method_notes(with_review=result is not None)]  # One bullet per step, as
+                                                   # on the website (the Claude bullet only when there's a review)
     lines += ["", "## Data challenges", ""]        # Next section heading
     lines += [f"- {note}" for note in website.data_challenges(scored)]  # One bullet per challenge, as on the website
     lines += ["", "## My read" if my_read else "## My read: coming soon", ""]  # Heading (says "coming soon" if empty)
@@ -122,17 +128,20 @@ def write_readme(scored, result, chart_list, data_date, comparison):
         "",                                        # Blank line
         "1. Install Python 3.12 or later, then in this folder run `python -m venv .venv`, activate it, and run "  # Step 1:
         "`pip install -r requirements.txt`.",      # Python and the libraries
-        "2. Install [Claude Code](https://claude.com/claude-code) and log in with a Claude subscription "  # Step 2:
-        "(`claude --version` should work in a new terminal). No API key is used.",  # Claude
-        "3. Download from the DMO website into `data/`: the outright gilt auction results "  # Step 3: the data
+        "2. Download from the DMO website into `data/`: the outright gilt auction results "  # Step 2: the data
         "([D2.1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A)), and into `data/maturities/` the "  # (link
                                                    # to the auction results report)
         "'Gilts in issue' and 'Redemption details' reports "  # (the maturity files)
         "([gilts in issue](https://www.dmo.gov.uk/data/gilt-market/gilts-in-issue/)).",  # link to that page
-        "4. Optionally, add amounts bid from DMO result notices to `data/bids_check.csv` to recheck cover.",  # Step 4
-        "5. Run `python main.py`. It scores the auctions, asks Claude for a draft, checks it, draws the charts and "  # Step 5:
-        "writes `docs/index.html`, `output/summary.md` and this README. `publish.bat` does the same, then pushes "  # run it
-        "the results to GitHub.",                  # (and publish)
+        "3. Optionally, add amounts bid from DMO result notices to `data/bids_check.csv` to recheck cover.",  # Step 3
+        "4. Run `python main.py`. It scores the auctions, runs the longer-run view, draws the charts and writes "  # Step 4:
+        "`docs/index.html`, `output/summary.md` and this README. No Claude Code or API key is needed.",  # run it
+        "",                                        # Blank line
+        "**Optional: the Claude-drafted review.** Install [Claude Code](https://claude.com/claude-code), log in with "  # The
+        "a Claude subscription (`claude --version` should work in a new terminal), then run "  # optional review, and
+        "`python main.py --review`. It also drafts a review of the latest auction and checks every auction fact it "  # what
+        "quotes. If Claude Code isn't found, the run carries on without the review. `publish.bat` runs "  # it needs
+        "`main.py --review`, then pushes the results to GitHub.",  # (and how it's published)
         "",                                        # Blank line
         "---",                                     # A dividing line
         "",                                        # Blank line

@@ -7,8 +7,9 @@ REM Double-click it, or type publish.bat in a terminal in this folder.
 REM Work in the folder this file is in, wherever it was started from (%~dp0 means "this file's folder")
 cd /d "%~dp0"
 
-REM Run the whole project: scoring, Claude's draft, the fact check, charts, summary, website and README
-.venv\Scripts\python.exe main.py
+REM Run the whole project with the Claude-drafted review switched on: scoring, Claude's draft, the fact check,
+REM charts, longer-run view, summary, website and README (without Claude Code it carries on with no review)
+.venv\Scripts\python.exe main.py --review
 REM If main.py stopped with an error, stop here rather than publish half-finished files
 if errorlevel 1 (
   REM Say why nothing was published

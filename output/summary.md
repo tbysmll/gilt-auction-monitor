@@ -23,9 +23,9 @@ Data as of 03 Nov 2026.
 | Label | normal |
 | Label rule | strong if both percentiles are at least 75; weak if either is 25 or lower; otherwise normal |
 
-## Claude-drafted review (to be checked and rewritten)
+## Claude-drafted review
 
-> The 3 November 2026 auction of the 4 5/8% Green Gilt 2037, a medium-bucket gilt with 10.34 years to maturity, sold £3,250 million nominal, with no take-up at the post-auction option facility. The average accepted price was £94.919 per £100 nominal, equivalent to a yield of 5.268%. The bid-to-cover ratio of 3.38 was higher than in 72.7% of the 55 peer auctions, which comprise medium-bucket conventional auctions in the previous 3 years. The tail of 0.3 basis points was narrower than in 60.0% of those peer auctions. With neither percentile at or below 25 and neither reaching the level of 75 required for a strong reading, the auction is classed as normal under our fixed rule.
+> The 3 November 2026 auction of the 4 5/8% Green Gilt 2037, which has 10.34 years to maturity and sits in the medium (7 to 15 years) bucket, sold £3,250 million nominal at an average accepted price of £94.919 per £100 nominal, a yield of 5.268%, and the post-auction option facility saw no take-up. The bid-to-cover ratio was 3.38, higher than in 72.7% of the 55 peer auctions, which are medium-bucket conventional auctions in the previous 3 years. The tail was 0.3 basis points, narrower than in 60.0% of that peer group. Neither measure reached the 75 percentile needed for a strong rating, and neither was at or below the 25 percentile that would mean a weak one. Under our fixed rule, the auction is therefore labelled normal.
 
 Numbers verified against DMO data: 8 of 8 facts matched.
 

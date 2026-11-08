@@ -1,6 +1,6 @@
 # Gilt Auction Monitor
 
-Scores every UK government bond (gilt) auction held by the Debt Management Office (DMO) for demand, and drafts a short review of the latest one with Claude. By Toby Small.
+Scores every UK government bond (gilt) auction held by the Debt Management Office (DMO) for demand and, optionally, drafts a short review of the latest one with Claude. By Toby Small.
 
 **Live page: [https://tbysmll.github.io/gilt-auction-monitor/](https://tbysmll.github.io/gilt-auction-monitor/)** · Data as of 03 Nov 2026
 
@@ -44,7 +44,7 @@ Percentiles against auctions in the same bucket over the previous 3 years (highe
 
 Drafted by Claude from the latest auction's facts and scores only, with no other data or tools; I check and rewrite it.
 
-> The 3 November 2026 auction of the 4 5/8% Green Gilt 2037, a medium-bucket gilt with 10.34 years to maturity, sold £3,250 million nominal, with no take-up at the post-auction option facility. The average accepted price was £94.919 per £100 nominal, equivalent to a yield of 5.268%. The bid-to-cover ratio of 3.38 was higher than in 72.7% of the 55 peer auctions, which comprise medium-bucket conventional auctions in the previous 3 years. The tail of 0.3 basis points was narrower than in 60.0% of those peer auctions. With neither percentile at or below 25 and neither reaching the level of 75 required for a strong reading, the auction is classed as normal under our fixed rule.
+> The 3 November 2026 auction of the 4 5/8% Green Gilt 2037, which has 10.34 years to maturity and sits in the medium (7 to 15 years) bucket, sold £3,250 million nominal at an average accepted price of £94.919 per £100 nominal, a yield of 5.268%, and the post-auction option facility saw no take-up. The bid-to-cover ratio was 3.38, higher than in 72.7% of the 55 peer auctions, which are medium-bucket conventional auctions in the previous 3 years. The tail was 0.3 basis points, narrower than in 60.0% of that peer group. Neither measure reached the 75 percentile needed for a strong rating, and neither was at or below the 25 percentile that would mean a weak one. Under our fixed rule, the auction is therefore labelled normal.
 
 **Numbers verified against DMO data: 8 of 8 facts matched.**
 
@@ -71,7 +71,7 @@ Conventional auctions only; each period runs from January of its first year to D
 - Its peers are the auctions in the same bucket over the previous 3 years. With fewer than 10 peers it isn't scored.
 - Cover percentile: the share of peers with a lower cover. Tail percentile: the share of peers with a wider tail. Ties count as half. For both, higher is better.
 - Strong: both percentiles at least 75. Weak: either 25 or lower. Otherwise normal. So one bad measure is enough to call an auction weak.
-- Claude drafts the review from the facts in the headline box only, with no other data or tools. Every number in the draft is then checked against those facts automatically, and I check the draft myself.
+- Claude drafts the review from the facts in the headline box only, with no other data or tools. Each auction fact it quotes is then checked against those facts automatically, and I check the draft myself.
 
 ## Data challenges
 
@@ -90,10 +90,11 @@ Conventional auctions only; each period runs from January of its first year to D
 Runs on your own computer: the DMO's website blocks automated downloads, so a cloud job can't fetch the data.
 
 1. Install Python 3.12 or later, then in this folder run `python -m venv .venv`, activate it, and run `pip install -r requirements.txt`.
-2. Install [Claude Code](https://claude.com/claude-code) and log in with a Claude subscription (`claude --version` should work in a new terminal). No API key is used.
-3. Download from the DMO website into `data/`: the outright gilt auction results ([D2.1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A)), and into `data/maturities/` the 'Gilts in issue' and 'Redemption details' reports ([gilts in issue](https://www.dmo.gov.uk/data/gilt-market/gilts-in-issue/)).
-4. Optionally, add amounts bid from DMO result notices to `data/bids_check.csv` to recheck cover.
-5. Run `python main.py`. It scores the auctions, asks Claude for a draft, checks it, draws the charts and writes `docs/index.html`, `output/summary.md` and this README. `publish.bat` does the same, then pushes the results to GitHub.
+2. Download from the DMO website into `data/`: the outright gilt auction results ([D2.1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A)), and into `data/maturities/` the 'Gilts in issue' and 'Redemption details' reports ([gilts in issue](https://www.dmo.gov.uk/data/gilt-market/gilts-in-issue/)).
+3. Optionally, add amounts bid from DMO result notices to `data/bids_check.csv` to recheck cover.
+4. Run `python main.py`. It scores the auctions, runs the longer-run view, draws the charts and writes `docs/index.html`, `output/summary.md` and this README. No Claude Code or API key is needed.
+
+**Optional: the Claude-drafted review.** Install [Claude Code](https://claude.com/claude-code), log in with a Claude subscription (`claude --version` should work in a new terminal), then run `python main.py --review`. It also drafts a review of the latest auction and checks every auction fact it quotes. If Claude Code isn't found, the run carries on without the review. `publish.bat` runs `main.py --review`, then pushes the results to GitHub.
 
 ---
 

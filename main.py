@@ -6,7 +6,8 @@ main.py - runs the whole Gilt Auction Monitor in one go.
   3. Review (only with --review): ask Claude to draft a short review of the latest auction (review.py).
   4. Verification (only with --review): check the auction facts quoted in the draft against the facts Claude was given.
   5. Charts: draw the three dashboard charts into docs/charts/ (charts.py).
-  6. Longer-run view: compare 2015-21 with 2023-25 (analysis.py).
+  6. Longer-run view: compare two periods (2015-21 with 2023-25 unless --compare says otherwise) and save the table
+     to output/comparison.md (analysis.py).
   7. Summary: write output/summary.md, a one-page record of this run.
   8. Website: write docs/index.html, the page GitHub Pages publishes (website.py).
   9. README: write README.md, the project's front page on GitHub (readme.py).
@@ -16,9 +17,14 @@ Run it with:  python main.py             (everything except the Claude review; n
 Options can be combined:
               --offline                  don't download; use the reports already saved in data/
               --sample                   use the sample reports in sample_data/ (try the tool straight after cloning)
+              --compare 2010-2014 2023-2025   compare any two periods (default 2015-2021 and 2023-2025)
+              --bucket long              show one maturity bucket: short, medium, long or all (default all)
+The website and README always show the standard 2015-21 vs 2023-25 view; --compare and --bucket change the printed
+table and output/comparison.md.
 """
 
 import argparse                                    # Reads options typed after the script's name, e.g. --review
+import sys                                         # Lets the script stop early with a clear message (sys.exit)
 from pathlib import Path                           # Handles folder and file paths the same way on Windows and Mac
 
 import analysis                                    # Our own analysis.py: the longer-run comparison of two periods
@@ -31,14 +37,17 @@ import website                                     # Our own website.py: writes 
 
 PROJECT_DIR = Path(__file__).parent                # The folder this script is in
 SUMMARY_FILE = PROJECT_DIR / "output" / "summary.md"  # Where the run summary is written
+COMPARISON_FILE = PROJECT_DIR / "output" / "comparison.md"  # Where the --compare table is saved
 
 
 def read_options():
     """Read the options typed after "python main.py".
 
     Takes no inputs (argparse reads them from the command line). Returns the options: options.review, options.offline
-    and options.sample are each True only if that option was typed.
-    Exists so the Claude review and downloading are things you can switch on or off.
+    and options.sample are each True only if that option was typed; options.compare is the two periods to compare,
+    e.g. [(2015, 2021), (2023, 2025)]; options.bucket is "all", "short", "medium" or "long".
+    Exists so the Claude review, downloading and the comparison are things you can choose.
+    A badly written option (e.g. --compare 2015-21) is reported straight away, before anything is downloaded.
     """
     parser = argparse.ArgumentParser(description="Score UK gilt auctions and build the charts, website and README.")  # The
                                                    # help text shown by "python main.py --help"
@@ -49,7 +58,22 @@ def read_options():
                         help="don't download from the DMO; use the reports already saved in data/")  # What it does
     parser.add_argument("--sample", action="store_true",  # A switch: use the bundled sample reports
                         help="use the sample reports in sample_data/ instead of data/ (nothing is downloaded)")  # What it does
-    return parser.parse_args()                     # Read what was typed and hand it back
+    parser.add_argument("--compare", nargs="*", type=analysis.parse_period, metavar="YYYY-YYYY",  # Zero or more periods,
+                                                   # each checked by analysis.parse_period as it's read
+                        help="two periods to compare, e.g. --compare 2010-2014 2023-2025 "  # What it does...
+                             "(default: 2015-2021 2023-2025)")  # ...and the default
+    parser.add_argument("--bucket", choices=analysis.BUCKET_CHOICES, default="all",  # Only these four words allowed
+                        help="which maturity bucket to compare: short, medium, long, or all (default)")  # What it does
+    options = parser.parse_args()                  # Read what was typed (argparse stops with a message if it's invalid)
+
+    if not options.compare:                        # --compare left out, or typed with no periods...
+        options.compare = list(analysis.PERIODS)   # ...so use the standard two
+    elif len(options.compare) != 2:                # One period, or three or more...
+        parser.error(f"--compare needs exactly two periods, e.g. --compare 2015-2021 2023-2025 "  # ...explain (argparse
+                     f"(you gave {len(options.compare)})")  # prints this with the usage line, then stops)
+    elif options.compare[0] == options.compare[1]:  # The same period twice...
+        parser.error("--compare needs two different periods")  # ...nothing to compare
+    return options                                 # The checked options
 
 
 def step(number, text):
@@ -149,6 +173,37 @@ def write_summary(data_date, facts, result, cover_check, chart_list, comparison)
     return SUMMARY_FILE                            # Tell the caller where it went
 
 
+def write_comparison(table, data_date):
+    """Save the --compare table to output/comparison.md.
+
+    table     -- the comparison from analysis.compare_periods()
+    data_date -- the date the DMO produced the data (a pandas Timestamp)
+    Returns the path of the file.
+    """
+    periods = " vs ".join(table["Period"].unique())  # e.g. "2015-21 vs 2023-25"
+    lines = [                                      # The file, one line of Markdown per item
+        f"# Longer-run view: {periods}",           # Title
+        "",                                        # Blank line (Markdown needs these between blocks)
+        analysis.headline(table),                  # The one-sentence comparison
+        "",                                        # Blank line
+        readme.markdown_table(analysis.formatted(table)),  # The table, decimals lined up
+        "",                                        # Blank line
+    ]                                              # End of the list
+    note = analysis.thin_rows_note(table)          # A warning about any bucket row with fewer than 10 auctions
+    if note:                                       # Only if there is one...
+        lines += [note, ""]                        # ...add it, followed by a blank line
+    lines += [                                     # How to read it, and the source
+        "Conventional auctions only; each period runs from January of its first year to December of its last; "  # How to
+        "auctions with impossible figures are left out. Medians are the middle value, so a single unusual auction "  # read
+        "can't move them much.",                   # it
+        "",                                        # Blank line
+        f"Source: UK Debt Management Office (D2.1A). Data as of {data_date:%d %b %Y}.",  # Source line
+    ]                                              # End of the list
+    COMPARISON_FILE.parent.mkdir(exist_ok=True)    # Create output/ if it doesn't exist yet
+    COMPARISON_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")  # Save it (UTF-8, so any symbols are kept)
+    return COMPARISON_FILE                         # Tell the caller where it went
+
+
 def main():
     """Run every stage in order and print where the results are.
 
@@ -169,6 +224,11 @@ def main():
     print(f"{len(scored)} conventional auctions scored.")  # How many
     if not cover_check.empty:                      # If any auctions were checked...
         print(cover_check.to_string(index=False))  # ...show the results
+    chosen = analysis.compare_periods(scored, *options.compare, bucket=options.bucket)  # The --compare periods (worked
+                                                   # out now, so a problem is reported before the slower steps run)
+    problem = analysis.too_few_auctions(chosen, scored)  # Does each period have at least 10 auctions?
+    if problem:                                    # No...
+        sys.exit(problem)                          # ...stop with the friendly explanation
 
     if options.review:                             # --review was typed...
         result = run_review(scored)                # ...so try steps 3 and 4 (None if Claude Code isn't installed)
@@ -182,9 +242,14 @@ def main():
         print(f"{chart['title']}\n   -> {chart['path']}")  # ...its title and where it was saved
 
     step(6, "Longer-run view")                     # Stage 6
-    comparison = analysis.compare_periods(scored)  # 2015-21 against 2023-25, overall and by bucket
-    print(analysis.formatted(comparison).to_string(index=False))  # The table, decimals lined up
-    print(analysis.headline(comparison))           # Its one-sentence summary
+    print(analysis.formatted(chosen).to_string(index=False))  # The --compare table (default 2015-21 vs 2023-25)
+    print(analysis.headline(chosen))               # Its one-sentence summary
+    note = analysis.thin_rows_note(chosen)         # A warning about any bucket row with fewer than 10 auctions
+    if note:                                       # If there is one...
+        print(note)                                # ...show it
+    print(f"Saved to {write_comparison(chosen, data_date)}")  # Write output/comparison.md and say where it went
+    comparison = analysis.compare_periods(scored)  # The standard view for the summary, website and README: 2015-21
+                                                   # against 2023-25, all buckets (whatever --compare says)
 
     step(7, "Summary")                             # Stage 7
     facts = result["facts"] if result else review.latest_auction_facts(scored)  # The latest auction's facts (worked

@@ -144,6 +144,9 @@ def write_readme(scored, result, chart_list, data_date, comparison):
         "   - Redemption Details of Redeemed Gilts ([D1C](https://www.dmo.gov.uk/data/ExportReport?reportCode=D1C)) "  # Report 3
         "→ save in `data/maturities/`",            # and its folder
         "4. Once the files are saved, `python main.py --offline` skips the download attempt and uses them.",  # Step 4
+        "   - Compare any two periods, for all auctions or one bucket: "  # The comparison options...
+        "`python main.py --compare 2010-2014 2023-2025 --bucket long`. The table is printed and saved to "  # ...with an
+        "`output/comparison.md` (each period needs at least 10 auctions; the site keeps the standard view).",  # example
         "5. Optionally, add amounts bid from DMO result notices to `data/bids_check.csv` to recheck cover.",  # Step 5
         "",                                        # Blank line
         "Each run scores the auctions, runs the longer-run view, draws the charts and writes `docs/index.html`, "  # What a

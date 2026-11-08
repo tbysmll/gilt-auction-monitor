@@ -44,7 +44,7 @@ Percentiles against auctions in the same bucket over the previous 3 years (highe
 
 Drafted by Claude from the latest auction's facts and scores only, with no other data or tools; I check and rewrite it.
 
-> The DMO's auction of the 4 5/8% Green Gilt 2037 on 3 November 2026 sold £3,250 million nominal of the medium-bucket bond, which has 10.34 years to maturity, at an average accepted price of £94.919 per £100 nominal, equivalent to a yield of 5.268%. The bid-to-cover ratio was 3.38, meaning cover was higher than in 72.7% of the 55 peer auctions, defined as medium-bucket conventional auctions in the previous 3 years. The tail was 0.3 basis points, narrower than in 60.0% of that peer group, indicating that accepted bids were relatively closely clustered around the average price. Taken together, both measures sit above the middle of the historical range but short of the 75th percentile threshold for a strong result, so the auction is classified as normal under our rule. There was no take-up at the post-auction option facility.
+> The 3 November 2026 auction of £3,250 million nominal of the 4 5/8% Green Gilt 2037, which has 10.34 years to maturity and sits in the medium (7 to 15 years) bucket, drew a bid-to-cover ratio of 3.38 at an average accepted price of £94.919, equivalent to a yield of 5.268%. The tail was 0.3 basis points, and there was no take-up at the post-auction option facility (PAOF). Against a peer group of 55 medium-bucket conventional auctions held in the previous 3 years, cover was higher than in 72.7% of them and the tail was narrower than in 60.0%. Both measures were above the middle of the peer range, but neither reached the threshold of 75 needed for a strong rating. On our fixed rule, which rates an auction strong only when both percentiles are at least 75 and weak when either is 25 or lower, the auction is classed as normal.
 
 **Numbers verified against DMO data: 8 of 8 facts matched.**
 
@@ -99,6 +99,7 @@ Runs on your own computer: the DMO's website blocks automated downloads, so a cl
    - Gilts in Issue ([D1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D1A)) → save in `data/maturities/`
    - Redemption Details of Redeemed Gilts ([D1C](https://www.dmo.gov.uk/data/ExportReport?reportCode=D1C)) → save in `data/maturities/`
 4. Once the files are saved, `python main.py --offline` skips the download attempt and uses them.
+   - Compare any two periods, for all auctions or one bucket: `python main.py --compare 2010-2014 2023-2025 --bucket long`. The table is printed and saved to `output/comparison.md` (each period needs at least 10 auctions; the site keeps the standard view).
 5. Optionally, add amounts bid from DMO result notices to `data/bids_check.csv` to recheck cover.
 
 Each run scores the auctions, runs the longer-run view, draws the charts and writes `docs/index.html`, `output/summary.md` and this README. No Claude Code or API key is needed.

@@ -128,14 +128,22 @@ def write_readme(scored, result, chart_list, data_date, comparison):
         "",                                        # Blank line
         "1. Install Python 3.12 or later, then in this folder run `python -m venv .venv`, activate it, and run "  # Step 1:
         "`pip install -r requirements.txt`.",      # Python and the libraries
-        "2. Download from the DMO website into `data/`: the outright gilt auction results "  # Step 2: the data
-        "([D2.1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A)), and into `data/maturities/` the "  # (link
-                                                   # to the auction results report)
-        "'Gilts in issue' and 'Redemption details' reports "  # (the maturity files)
-        "([gilts in issue](https://www.dmo.gov.uk/data/gilt-market/gilts-in-issue/)).",  # link to that page
-        "3. Optionally, add amounts bid from DMO result notices to `data/bids_check.csv` to recheck cover.",  # Step 3
-        "4. Run `python main.py`. It scores the auctions, runs the longer-run view, draws the charts and writes "  # Step 4:
-        "`docs/index.html`, `output/summary.md` and this README. No Claude Code or API key is needed.",  # run it
+        "2. **Try it straight away** with the sample data in `sample_data/` (the three DMO reports as of "  # Step 2: the
+        "03 Nov 2026): `python main.py --sample`. Nothing is downloaded.",  # sample data, so it works after cloning
+        "3. **For current data**, run `python main.py`. It tries to download the three DMO reports it needs. If the "  # Step 3:
+        "DMO's bot protection blocks a download, it lists exactly which files to download by hand, with a link "  # live data
+        "and the folder for each, and meanwhile uses the newest copies already saved:",  # and what happens if blocked
+        "   - Outright Gilt Auctions ([D2.1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A)) "  # Report 1
+        "→ save in `data/`",                       # and its folder
+        "   - Gilts in Issue ([D1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D1A)) "  # Report 2
+        "→ save in `data/maturities/`",            # and its folder
+        "   - Redemption Details of Redeemed Gilts ([D1C](https://www.dmo.gov.uk/data/ExportReport?reportCode=D1C)) "  # Report 3
+        "→ save in `data/maturities/`",            # and its folder
+        "4. Once the files are saved, `python main.py --offline` skips the download attempt and uses them.",  # Step 4
+        "5. Optionally, add amounts bid from DMO result notices to `data/bids_check.csv` to recheck cover.",  # Step 5
+        "",                                        # Blank line
+        "Each run scores the auctions, runs the longer-run view, draws the charts and writes `docs/index.html`, "  # What a
+        "`output/summary.md` and this README. No Claude Code or API key is needed.",  # run produces
         "",                                        # Blank line
         "**Optional: the Claude-drafted review.** Install [Claude Code](https://claude.com/claude-code), log in with "  # The
         "a Claude subscription (`claude --version` should work in a new terminal), then run "  # optional review, and

@@ -3,7 +3,8 @@ scoring.py - scores each conventional gilt auction's cover and tail against simi
 
 What it does:
   1. keeps conventional gilts only (index-linked auctions are sold at one price, so they have no tail),
-  2. looks up each gilt's exact redemption (maturity) date in two DMO reports saved in data/maturities/,
+  2. looks up each gilt's exact redemption (maturity) date in two DMO reports saved in data/maturities/
+     (dmo.py finds them, in data/ or, with --sample, in sample_data/),
   3. works out years to maturity on each auction day and puts each auction in a DMO maturity bucket:
      short (under 7 years), medium (7 to 15 years) or long (over 15 years),
   4. compares each auction's cover and tail with its "peers" (same bucket, previous 3 years) as percentiles,
@@ -22,7 +23,6 @@ import pandas as pd                                # Tables of data (like Excel 
 
 import dmo                                         # Our own dmo.py: finds and reads the DMO's Excel reports
 
-MATURITIES_DIR = dmo.DATA_DIR / "maturities"       # data/maturities/: the "Gilts in issue" and "Redemption details" files
 DAYS_PER_YEAR = 365.25                             # Average length of a year, allowing for leap years
 SHORT_LIMIT = 7                                    # Under 7 years to maturity = short (the DMO's own bucket limits)
 LONG_LIMIT = 15                                    # Over 15 years = long; 7 to 15 years = medium
@@ -30,7 +30,6 @@ LONG_LIMIT = 15                                    # Over 15 years = long; 7 to 
 COVER = "Bid to Cover Ratio (times)"               # The DMO's column name for cover (higher = stronger demand)
 TAIL = "Yield Tail at Auction (bp)"                # The DMO's column name for the tail (narrower = stronger demand)
 SOLD = "Nominal Amount Issued via Auction (£ million)"  # Amount sold in the auction itself (not the later PAOF top-up)
-BIDS_FILE = dmo.DATA_DIR / "bids_check.csv"        # Amounts bid, copied by hand from DMO result notices
 COVER_TOLERANCE = 0.005                            # The DMO rounds cover to 2 decimal places, so a true match is
                                                    # always within half of 0.01
 WINDOW_YEARS = 3                                   # Peers are auctions from the 3 years before each auction
@@ -57,16 +56,13 @@ def tidy_name(name):
 
 
 def load_maturities():
-    """Read every gilt's redemption date from the two DMO files in data/maturities/.
+    """Read every gilt's redemption date from the two DMO maturity reports (Gilts in Issue, and Redemption Details).
 
     Takes no inputs. Returns a table with one row per gilt: "name_key" (the tidied name) and "Redemption Date".
     Exists because the auction file only gives each gilt's maturity year, and the buckets need the exact date.
     """
-    files = list(MATURITIES_DIR.glob("*.xls")) + list(MATURITIES_DIR.glob("*.xlsx"))  # Every Excel file in the folder
-    if len(files) < 2:                             # We need both "Gilts in issue" and "Redemption details"
-        sys.exit(f"Expected 2 Excel files in {MATURITIES_DIR} ('Gilts in issue' and 'Redemption details'), "  # Stop
-                 f"found {len(files)}. Download them from https://dmo.gov.uk/data/gilt-market/gilts-in-issue/")  # and say how to fix it
-
+    files = [dmo.saved_report("in_issue"), dmo.saved_report("redeemed")]  # The newest copy of each (stops clearly if
+                                                   # either is missing)
     tables = []                                    # One small table per file; joined together at the end
     for path in files:                             # Each maturity file in turn
         table = dmo.load_report(path, header_text="Redemption Date")  # Reuse dmo.py's reader; its header row has "Redemption Date"
@@ -222,14 +218,17 @@ def score_auctions(auctions):
 
 
 def check_cover(auctions):
-    """Recalculate cover from amount bid / amount sold for the auctions in data/bids_check.csv, and compare.
+    """Recalculate cover from amount bid / amount sold for the auctions in bids_check.csv, and compare.
 
     auctions -- the auction table (scored or not; it needs "Auction Date", "Gilt Name", SOLD and COVER)
-    Returns a small table: one row per checked auction, with the DMO's cover, our recalculated cover and a result.
+    Returns a small table: one row per checked auction, with the DMO's cover, our recalculated cover and a result
+    (an empty table if there's no bids_check.csv, since the check is optional).
     Exists as a data-quality check: if our own sum doesn't give the DMO's figure, either the file or our
     understanding of "cover" is wrong, and we'd want to know before scoring on it.
     """
-    bids = pd.read_csv(BIDS_FILE, parse_dates=["auction_date"])  # The hand-copied figures, with dates read as dates
+    if not dmo.bids_file().exists():               # No hand-copied bids in this run's data folder...
+        return pd.DataFrame()                      # ...so nothing to check (an empty table)
+    bids = pd.read_csv(dmo.bids_file(), parse_dates=["auction_date"])  # The hand-copied figures, dates read as dates
     bids = bids.dropna(subset=["amount_bid_mn"])   # Ignore rows where the amount bid hasn't been filled in yet
     rows = []                                      # One result per checked auction
     for _, bid in bids.iterrows():                 # Each hand-copied auction in turn
@@ -299,7 +298,8 @@ def load_scored():
     Takes no inputs. Returns the scored table of conventional auctions, oldest first.
     Exists so other files (e.g. review.py) can get the scores without repeating these steps.
     """
-    auctions = dmo.sort_by_date(dmo.load_report(dmo.newest_saved_file()))  # All auctions from the saved file, oldest first
+    auctions = dmo.sort_by_date(dmo.load_report(dmo.saved_report("auctions")))  # All auctions from the newest saved
+                                                   # auction file (in data/, or sample_data/ with --sample), oldest first
     bucketed = add_buckets(conventional_only(auctions), load_maturities())  # Conventional only, with buckets added
     return score_auctions(bucketed)                # Add percentiles and labels
 

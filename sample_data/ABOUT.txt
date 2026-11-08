@@ -1,0 +1,14 @@
+Sample data for trying the Gilt Auction Monitor straight after cloning, without downloading anything.
+
+Run:  python main.py --sample
+
+What's here (unchanged copies of the UK Debt Management Office's own Excel exports, data as of 03 Nov 2026):
+  20261103 - Outright Gilt Auctions.xls                         report D2.1A, every gilt auction since 1998
+  maturities/20261103 - Gilts in Issue.xls                      report D1A, redemption dates of gilts in issue
+  maturities/20261103 - Redemption Details of Redeemed Gilts.xls  report D1C, redemption dates of redeemed gilts
+  bids_check.csv                                                amount bid for one auction, copied from the DMO's
+                                                                result notice of 3 Nov 2026, for the cover check
+
+Source: UK Debt Management Office, https://www.dmo.gov.uk/data/
+These files are not updated. For current data, run python main.py, which downloads the latest reports into data/
+(or tells you which ones to download by hand if the DMO's website blocks it).

@@ -1,7 +1,7 @@
 """
 main.py - runs the whole Gilt Auction Monitor in one go.
 
-  1. Download: get the DMO's auction results (or, if its bot protection blocks us, use the newest copy in data/).
+  1. Data: download the three DMO reports (or, if its bot protection blocks us, use the newest copies in data/).
   2. Scoring: bucket and score every conventional auction (scoring.py), and recheck cover where we have the bids.
   3. Review (only with --review): ask Claude to draft a short review of the latest auction (review.py).
   4. Verification (only with --review): check the auction facts quoted in the draft against the facts Claude was given.
@@ -13,6 +13,9 @@ main.py - runs the whole Gilt Auction Monitor in one go.
 
 Run it with:  python main.py             (everything except the Claude review; no Claude Code needed)
          or:  python main.py --review    (also drafts and fact-checks a review; needs Claude Code installed)
+Options can be combined:
+              --offline                  don't download; use the reports already saved in data/
+              --sample                   use the sample reports in sample_data/ (try the tool straight after cloning)
 """
 
 import argparse                                    # Reads options typed after the script's name, e.g. --review
@@ -20,7 +23,7 @@ from pathlib import Path                           # Handles folder and file pat
 
 import analysis                                    # Our own analysis.py: the longer-run comparison of two periods
 import charts                                      # Our own charts.py: the three dashboard charts
-import dmo                                         # Our own dmo.py: downloads / finds the DMO auction file
+import dmo                                         # Our own dmo.py: downloads / finds the three DMO reports
 import readme                                      # Our own readme.py: writes README.md (and formats Markdown tables)
 import review                                      # Our own review.py: the Claude-drafted review and its fact check
 import scoring                                     # Our own scoring.py: buckets, percentiles and labels
@@ -33,15 +36,19 @@ SUMMARY_FILE = PROJECT_DIR / "output" / "summary.md"  # Where the run summary is
 def read_options():
     """Read the options typed after "python main.py".
 
-    Takes no inputs (argparse reads them from the command line). Returns the options; options.review is True only
-    if --review was typed.
-    Exists so the Claude review is something you switch on, not something everyone needs.
+    Takes no inputs (argparse reads them from the command line). Returns the options: options.review, options.offline
+    and options.sample are each True only if that option was typed.
+    Exists so the Claude review and downloading are things you can switch on or off.
     """
     parser = argparse.ArgumentParser(description="Score UK gilt auctions and build the charts, website and README.")  # The
                                                    # help text shown by "python main.py --help"
     parser.add_argument("--review", action="store_true",  # A switch: present = True, absent = False
                         help="also ask Claude to draft a review of the latest auction and fact-check it "  # What it does
                              "(needs Claude Code installed and logged in)")  # ...and what it needs
+    parser.add_argument("--offline", action="store_true",  # A switch: skip downloading
+                        help="don't download from the DMO; use the reports already saved in data/")  # What it does
+    parser.add_argument("--sample", action="store_true",  # A switch: use the bundled sample reports
+                        help="use the sample reports in sample_data/ instead of data/ (nothing is downloaded)")  # What it does
     return parser.parse_args()                     # Read what was typed and hand it back
 
 
@@ -123,7 +130,7 @@ def write_summary(data_date, facts, result, cover_check, chart_list, comparison)
         "",                                        # Blank line
         "## Cover check (amount bid / amount sold, against the DMO's stated cover)",  # Section heading
         "",                                        # Blank line
-        markdown_table(cover_check) if not cover_check.empty else "No auctions in data/bids_check.csv yet.",  # Results
+        markdown_table(cover_check) if not cover_check.empty else "No auctions in bids_check.csv yet.",  # Results
         "",                                        # Blank line
         "## Charts",                               # Section heading
     ]                                              # End of the list
@@ -145,14 +152,16 @@ def write_summary(data_date, facts, result, cover_check, chart_list, comparison)
 def main():
     """Run every stage in order and print where the results are.
 
-    Takes no inputs (reads --review from the command line). Returns nothing; prints to the screen and writes files.
+    Takes no inputs (reads --review, --offline and --sample from the command line). Returns nothing; prints to the
+    screen and writes files.
     """
-    options = read_options()                       # Was --review typed?
+    options = read_options()                       # Which options were typed?
 
-    step(1, "Download")                            # Stage 1
-    path = dmo.get_auction_file()                  # Downloaded, or the newest saved copy
-    data_date = dmo.data_date(path)                # The date the DMO produced it
-    print(f"Using {path.name} (data as of {data_date:%d %b %Y})")  # Say which file is being used
+    step(1, "Data")                                # Stage 1
+    files = dmo.get_data(offline=options.offline, sample=options.sample)  # The three reports: downloaded, or the
+                                                   # newest saved copies (stops with a clear message if any is missing)
+    data_date = dmo.data_date(files["auctions"])   # The date the DMO produced the auction file
+    print(f"Data as of {data_date:%d %b %Y}")      # Say how up to date it is
 
     step(2, "Scoring")                             # Stage 2
     scored = scoring.load_scored()                 # Every conventional auction, bucketed and scored

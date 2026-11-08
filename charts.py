@@ -36,7 +36,7 @@ def source_line():
 
     Takes no inputs. Returns text like "Source: UK Debt Management Office (D2.1A). Data as of 03 Nov 2026."
     """
-    date = dmo.data_date(dmo.newest_saved_file())  # The date the DMO produced the saved report
+    date = dmo.data_date(dmo.saved_report("auctions"))  # The date the DMO produced the auction file this run uses
     return f"Source: UK Debt Management Office (D2.1A). Data as of {date:%d %b %Y}."  # e.g. "03 Nov 2026"
 
 

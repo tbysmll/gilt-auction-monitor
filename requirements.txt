@@ -1,6 +1,15 @@
-pandas          # tables of data (like Excel in Python)
-requests        # downloads data from the web (DMO auction results)
-matplotlib      # draws the charts, in the house style from chart_style.py
-python-dotenv   # reads the API key from the .env file
-xlrd            # lets pandas read old-style Excel files (.xls)
-openpyxl        # lets pandas read new-style Excel files (.xlsx)
+# Exact versions, so everyone who installs this gets the same libraries the project was built and tested with.
+# Install with:  pip install -r requirements.txt     (needs Python 3.12 or later)
+
+# Tables of data (like Excel in Python)
+pandas==3.1.0
+# The maths library pandas and matplotlib are built on (pinned too, so the three always match)
+numpy==2.5.4
+# Downloads the DMO reports from the web
+requests==2.34.2
+# Draws the charts, in the house style from chart_style.py
+matplotlib==3.11.2
+# Lets pandas read old-style Excel files (.xls), the format the DMO exports
+xlrd==2.0.2
+# Lets pandas read new-style Excel files (.xlsx), in case a report is saved that way
+openpyxl==3.1.5

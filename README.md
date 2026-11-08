@@ -44,7 +44,7 @@ Percentiles against auctions in the same bucket over the previous 3 years (highe
 
 Drafted by Claude from the latest auction's facts and scores only, with no other data or tools; I check and rewrite it.
 
-> The 3 November 2026 auction of the 4 5/8% Green Gilt 2037 (10.34 years to maturity, in the medium 7 to 15 year bucket) sold £3,250 million nominal, and there was no take-up at the post-auction option facility. The average accepted price was £94.919 per £100 nominal, which is a yield of 5.268%. The bid-to-cover ratio of 3.38 was higher than in 72.7% of the 55 peer auctions, which are medium-bucket conventional auctions held in the previous 3 years. The tail of 0.3 basis points was narrower than in 60.0% of those auctions, so demand was fairly even across accepted bids. Our rule rates an auction strong only if both percentiles are at least 75, and weak if either is 25 or lower; this auction meets neither test, so it is classed as normal.
+> The DMO's auction of the 4 5/8% Green Gilt 2037 on 3 November 2026 sold £3,250 million nominal of the medium-bucket bond, which has 10.34 years to maturity, at an average accepted price of £94.919 per £100 nominal, equivalent to a yield of 5.268%. The bid-to-cover ratio was 3.38, meaning cover was higher than in 72.7% of the 55 peer auctions, defined as medium-bucket conventional auctions in the previous 3 years. The tail was 0.3 basis points, narrower than in 60.0% of that peer group, indicating that accepted bids were relatively closely clustered around the average price. Taken together, both measures sit above the middle of the historical range but short of the 75th percentile threshold for a strong result, so the auction is classified as normal under our rule. There was no take-up at the post-auction option facility.
 
 **Numbers verified against DMO data: 8 of 8 facts matched.**
 
@@ -89,7 +89,10 @@ Conventional auctions only; each period runs from January of its first year to D
 
 Runs on your own computer: the DMO's website blocks automated downloads, so a cloud job can't fetch the data.
 
-1. Install Python 3.12 or later, then in this folder run `python -m venv .venv`, activate it, and run `pip install -r requirements.txt`.
+1. Install Python 3.12 or later and, in this folder, create a virtual environment and install the libraries (on a Mac or Linux, type `python3` where it says `python`):
+   - `python -m venv .venv`
+   - Activate it: Windows `.venv\Scripts\activate`; Mac or Linux `source .venv/bin/activate`
+   - `pip install -r requirements.txt` (exact versions, so you get the libraries it was tested with)
 2. **Try it straight away** with the sample data in `sample_data/` (the three DMO reports as of 03 Nov 2026): `python main.py --sample`. Nothing is downloaded.
 3. **For current data**, run `python main.py`. It tries to download the three DMO reports it needs. If the DMO's bot protection blocks a download, it lists exactly which files to download by hand, with a link and the folder for each, and meanwhile uses the newest copies already saved:
    - Outright Gilt Auctions ([D2.1A](https://www.dmo.gov.uk/data/ExportReport?reportCode=D2.1A)) → save in `data/`
@@ -100,7 +103,9 @@ Runs on your own computer: the DMO's website blocks automated downloads, so a cl
 
 Each run scores the auctions, runs the longer-run view, draws the charts and writes `docs/index.html`, `output/summary.md` and this README. No Claude Code or API key is needed.
 
-**Optional: the Claude-drafted review.** Install [Claude Code](https://claude.com/claude-code), log in with a Claude subscription (`claude --version` should work in a new terminal), then run `python main.py --review`. It also drafts a review of the latest auction and checks every auction fact it quotes. If Claude Code isn't found, the run carries on without the review. `publish.bat` runs `main.py --review`, then pushes the results to GitHub.
+**Optional: the Claude-drafted review.** Install [Claude Code](https://claude.com/claude-code), log in with a Claude subscription (`claude --version` should work in a new terminal), then run `python main.py --review`. It also drafts a review of the latest auction and checks every auction fact it quotes. If Claude Code isn't found, the run carries on without the review.
+
+**Publishing (for the repo owner).** `python publish.py` runs `main.py --review`, then commits only `docs/` and `output/` as "Update: auction of <date>" and pushes them to GitHub, which republishes the site. Add `--offline` to skip downloading. It works on Windows, Mac and Linux.
 
 ---
 

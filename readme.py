@@ -126,8 +126,12 @@ def write_readme(scored, result, chart_list, data_date, comparison):
         "",                                        # Blank line
         "Runs on your own computer: the DMO's website blocks automated downloads, so a cloud job can't fetch the data.",  # Why local
         "",                                        # Blank line
-        "1. Install Python 3.12 or later, then in this folder run `python -m venv .venv`, activate it, and run "  # Step 1:
-        "`pip install -r requirements.txt`.",      # Python and the libraries
+        "1. Install Python 3.12 or later and, in this folder, create a virtual environment and install the "  # Step 1:
+        "libraries (on a Mac or Linux, type `python3` where it says `python`):",  # Python and the libraries
+        "   - `python -m venv .venv`",             # Create the environment (same on every system)
+        "   - Activate it: Windows `.venv\\Scripts\\activate`; Mac or Linux `source .venv/bin/activate`",  # The one step
+                                                   # that differs between systems ("\\" writes a single backslash)
+        "   - `pip install -r requirements.txt` (exact versions, so you get the libraries it was tested with)",  # Install
         "2. **Try it straight away** with the sample data in `sample_data/` (the three DMO reports as of "  # Step 2: the
         "03 Nov 2026): `python main.py --sample`. Nothing is downloaded.",  # sample data, so it works after cloning
         "3. **For current data**, run `python main.py`. It tries to download the three DMO reports it needs. If the "  # Step 3:
@@ -148,8 +152,11 @@ def write_readme(scored, result, chart_list, data_date, comparison):
         "**Optional: the Claude-drafted review.** Install [Claude Code](https://claude.com/claude-code), log in with "  # The
         "a Claude subscription (`claude --version` should work in a new terminal), then run "  # optional review, and
         "`python main.py --review`. It also drafts a review of the latest auction and checks every auction fact it "  # what
-        "quotes. If Claude Code isn't found, the run carries on without the review. `publish.bat` runs "  # it needs
-        "`main.py --review`, then pushes the results to GitHub.",  # (and how it's published)
+        "quotes. If Claude Code isn't found, the run carries on without the review.",  # it needs
+        "",                                        # Blank line
+        "**Publishing (for the repo owner).** `python publish.py` runs `main.py --review`, then commits only `docs/` "  # How
+        "and `output/` as \"Update: auction of <date>\" and pushes them to GitHub, which republishes the site. Add "  # the
+        "`--offline` to skip downloading. It works on Windows, Mac and Linux.",  # site is published
         "",                                        # Blank line
         "---",                                     # A dividing line
         "",                                        # Blank line

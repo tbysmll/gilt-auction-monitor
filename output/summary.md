@@ -25,19 +25,19 @@ Data as of 03 Nov 2026.
 
 ## Claude-drafted review
 
-> On 3 November 2026 the DMO sold £3,250 million nominal of the 4 5/8% Green Gilt 2037 (10.34 years to maturity, medium bucket) at a bid-to-cover ratio of 3.38, with an average accepted price of £94.919 per £100 nominal, equivalent to a yield of 5.268%. The tail was 0.3 basis points, and there was no take-up at the post-auction option facility. We compared the auction with 55 medium-bucket conventional auctions from the previous 3 years: cover was higher than in 72.7% of them, and the tail was narrower than in 60.0%. The result is therefore labelled normal: a strong label requires both percentiles to be at least 75, while a weak label applies if either is 25 or lower.
+> The 3 November 2026 auction of the 4 5/8% Green Gilt 2037, a medium-bucket (7 to 15 years) gilt with 10.34 years to maturity, sold £3,250 million nominal at an average accepted price of £94.919 per £100 nominal, a yield of 5.268%. The bid-to-cover ratio was 3.38, so cover was higher than in 72.7% of the 55 peer auctions, which are medium-bucket conventional auctions held in the previous 3 years. The tail was 0.3 basis points, narrower than in 60.0% of those peer auctions. There was no take-up at the post-auction option facility (PAOF). Neither percentile reached the 75 needed for a strong label, and neither was at 25 or lower, so the fixed classification rule labels the auction as normal.
 
 Numbers verified against DMO data: 8 of 8 facts matched.
 
 | Number in draft | Fact | Check |
 |---|---|---|
 | 3,250 | Amount sold at auction (£ million nominal) | exact |
-| 3.38 | Bid-to-cover ratio | exact |
 | 94.919 | Average accepted price (£ per £100 nominal) | exact |
 | 5.268 | Yield at average accepted price (%) | exact |
-| 0.3 | Tail (basis points) | exact |
-| 55 | Peer auctions | exact |
+| 3.38 | Bid-to-cover ratio | exact |
 | 72.7 | Cover percentile | exact |
+| 55 | Peer auctions | exact |
+| 0.3 | Tail (basis points) | exact |
 | 60.0 | Tail percentile | exact |
 
 ## Cover check (amount bid / amount sold, against the DMO's stated cover)

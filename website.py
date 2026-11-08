@@ -7,8 +7,8 @@ projects look like a matching pair:
   - a headline box for the latest auction: six tiles (label, cover, tail, yield, amount sold, bucket),
   - the three charts as cards (FIGURE 1-3, each with its takeaway title, subtitle and source line),
   - a sidebar: the Claude-drafted review with its fact-check badge (only after python main.py --review),
-    "My read" (from my_read.md), Method, Data challenges,
-  - a sortable table of the last 20 conventional auctions,
+    Method, Data challenges,
+  - the longer-run view (2015-21 vs 2023-25) and a sortable table of the last 20 conventional auctions,
   - a footer with the DMO source line and a link to the code on GitHub.
 
 It's one self-contained HTML file. Its only JavaScript is the few lines that sort the table, written out below:
@@ -33,7 +33,6 @@ import scoring                                     # Our own scoring.py: column 
 
 PROJECT_DIR = Path(__file__).parent                # The folder this script is in
 SITE_FILE = PROJECT_DIR / "docs" / "index.html"    # The web page; "index.html" is the file a website shows by default
-MY_READ_FILE = PROJECT_DIR / "my_read.md"          # Toby's own view of the latest auction, written by hand
 AUTHOR = config.AUTHOR                             # Shown in the masthead (set in config.py)
 REPO_URL = config.REPO_URL                         # The code on GitHub, linked from the footer (set in config.py)
 TABLE_ROWS = 20                                    # How many recent auctions the table shows
@@ -123,19 +122,6 @@ document.querySelectorAll("th[data-type]").forEach(function (th) {        // Eve
   });                                                                    // End of what a click does
 });                                                                      // End of the loop over headings
 </script>"""                                                             # End of the JavaScript
-
-
-def read_my_read():
-    """Read Toby's own view from my_read.md, as a list of paragraphs.
-
-    Takes no inputs. Returns a list of paragraphs (blank lines separate them), or an empty list if there's no file yet.
-    Exists so the "My read" section is always written by hand, never by code or by Claude.
-    """
-    if not MY_READ_FILE.exists():                  # Not written yet...
-        return []                                  # ...so nothing to show
-    text = MY_READ_FILE.read_text(encoding="utf-8")  # The whole file
-    paragraphs = [" ".join(block.split()) for block in text.split("\n\n")]  # Split at blank lines; tidy the spaces
-    return [p for p in paragraphs if p and not p.startswith("#")]  # Drop empty blocks and Markdown headings ("# ...")
 
 
 def tiles(latest):
@@ -310,7 +296,7 @@ def write_site(scored, result, chart_list, data_date, comparison):
 
     scored     -- the scored table from scoring.load_scored()
     result     -- the review step's results, from review.draft_review(), or None if no review was run (the review
-                  card is then left out and the sidebar starts with "My read")
+                  card is then left out and the sidebar starts with "Method")
     chart_list -- the charts' titles, subtitles, sources and paths, from charts.make_charts()
     data_date  -- the date the DMO produced the data (a pandas Timestamp)
     comparison -- the longer-run comparison, from analysis.compare_periods()
@@ -387,14 +373,6 @@ def write_site(scored, result, chart_list, data_date, comparison):
                  f"<p>{esc(result['draft'])}</p>",  # The draft itself
                  "</div>"]                         # End of the card
                                                    # (With no review, nothing is written here: no empty box, no gap.)
-
-    my_read = read_my_read()                       # Toby's own view, if written (an empty list if not)
-    if my_read:                                    # Written...
-        page += ['<div class="card">', "<h2>My read</h2>"]  # ...its card, with its heading
-        page += [f"<p>{esc(p)}</p>" for p in my_read]  # ...one <p> per paragraph
-        page += ['<p class="foot">Written by hand, so it changes only when I update it.</p>', "</div>"]  # Make that clear
-    else:                                          # Not written yet...
-        page += ['<div class="card">', "<h2>My read: coming soon</h2>", "</div>"]  # ...say so, not a blank box
 
     page += ['<div class="card">', "<h2>Method</h2>", "<ul>"]  # The method card
     page += [f"<li>{esc(note)}</li>" for note in method_notes(with_review=result is not None)]  # One bullet per step
